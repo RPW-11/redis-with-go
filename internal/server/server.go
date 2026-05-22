@@ -1,8 +1,8 @@
 package server
 
 import (
+	"bufio"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
 )
@@ -35,20 +35,17 @@ func (s *Server) handle(conn net.Conn) {
 	slog.Info(fmt.Sprintf("Request arrive from: %s", conn.RemoteAddr().String()))
 	defer conn.Close()
 
-	for {
-		b := [1024]byte{}
-		n, err := conn.Read(b[:])
-		if err != nil {
-			if err != io.EOF {
-				slog.Error(fmt.Sprintf("error reading data from the connection: %v\n", err))
-			}
-			return
-		}
-
-		fmt.Printf("Data from conn: %s", string(b[:n]))
-
-		conn.Write([]byte("Your message has been received\n"))
+	rd := bufio.NewReader(conn)
+	v, err := parse(rd)
+	if err != nil {
+		slog.Error(fmt.Sprintf("processing conn: %v\n", err))
+		conn.Write([]byte("invalid type\n"))
+		return
 	}
+
+	fmt.Println("Received value:", v)
+
+	conn.Write([]byte("Your type is valid\n"))
 }
 
 func NewServer(port string) *Server {
