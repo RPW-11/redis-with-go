@@ -119,11 +119,8 @@ func TestParseBString(t *testing.T) {
 		if v.typ != BStringType {
 			t.Fatalf("expected BStringType, got '%c'", v.typ)
 		}
-		if len(v.arr) != 1 {
-			t.Fatalf("expected arr length 1, got %d", len(v.arr))
-		}
-		if v.arr[0].str != "hello" {
-			t.Fatalf("expected 'hello', got %q", v.arr[0].str)
+		if v.str != "hello" {
+			t.Fatalf("expected 'hello', got %q", v.str)
 		}
 	})
 
@@ -132,28 +129,21 @@ func TestParseBString(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(v.arr) != 1 {
-			t.Fatalf("expected arr length 1, got %d", len(v.arr))
+		if v.typ != BStringType {
+			t.Fatalf("expected BStringType, got '%c'", v.typ)
 		}
-		if v.arr[0].str != "" {
-			t.Fatalf("expected empty string segment, got %q", v.arr[0].str)
+		if v.str != "" {
+			t.Fatalf("expected empty string, got %q", v.str)
 		}
 	})
 
-	// payload containing CRLF is split into multiple arr segments
-	t.Run("payload with CRLF splits into segments", func(t *testing.T) {
-		v, err := parse(newReader("$12\r\nhello\r\nworld\r\n"))
+	t.Run("payload preserved as raw string", func(t *testing.T) {
+		v, err := parse(newReader("$11\r\nhello world\r\n"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(v.arr) != 2 {
-			t.Fatalf("expected arr length 2, got %d", len(v.arr))
-		}
-		if v.arr[0].str != "hello" {
-			t.Fatalf("expected arr[0]='hello', got %q", v.arr[0].str)
-		}
-		if v.arr[1].str != "world" {
-			t.Fatalf("expected arr[1]='world', got %q", v.arr[1].str)
+		if v.str != "hello world" {
+			t.Fatalf("expected 'hello world', got %q", v.str)
 		}
 	})
 
@@ -277,6 +267,65 @@ func TestParseBoolean(t *testing.T) {
 		_, err := parse(newReader("#x\r\n"))
 		if err == nil {
 			t.Fatal("expected error for invalid boolean value")
+		}
+	})
+}
+
+func TestParseDouble(t *testing.T) {
+	t.Run("positive float", func(t *testing.T) {
+		v, err := parse(newReader(",3.14\r\n"))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.typ != DoubleType {
+			t.Fatalf("expected DoubleType, got '%c'", v.typ)
+		}
+		if v.fl != 3.14 {
+			t.Fatalf("expected 3.14, got %f", v.fl)
+		}
+	})
+
+	t.Run("negative float", func(t *testing.T) {
+		v, err := parse(newReader(",-1.5\r\n"))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.fl != -1.5 {
+			t.Fatalf("expected -1.5, got %f", v.fl)
+		}
+	})
+
+	t.Run("zero", func(t *testing.T) {
+		v, err := parse(newReader(",0\r\n"))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.fl != 0 {
+			t.Fatalf("expected 0, got %f", v.fl)
+		}
+	})
+
+	t.Run("integer-like value", func(t *testing.T) {
+		v, err := parse(newReader(",42\r\n"))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.fl != 42.0 {
+			t.Fatalf("expected 42.0, got %f", v.fl)
+		}
+	})
+
+	t.Run("non-numeric value", func(t *testing.T) {
+		_, err := parse(newReader(",abc\r\n"))
+		if err == nil {
+			t.Fatal("expected error for non-numeric double")
+		}
+	})
+
+	t.Run("truncated input", func(t *testing.T) {
+		_, err := parse(newReader(",3.14"))
+		if err == nil {
+			t.Fatal("expected error on truncated input")
 		}
 	})
 }

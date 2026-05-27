@@ -1,14 +1,17 @@
 package server
 
 import (
-	"bufio"
+	"context"
 	"fmt"
 	"log/slog"
 	"net"
+
+	ds "github.com/RPW-11/redis-with-go/internal/data_structures"
 )
 
 type Server struct {
 	Port string
+	m    *ds.RedisMap
 }
 
 func (s *Server) Run() error {
@@ -18,7 +21,16 @@ func (s *Server) Run() error {
 		return fmt.Errorf("couldn't listen to network\n")
 	}
 
+	defer func() {
+		if err := l.Close(); err != nil {
+			slog.Error("error closing the network")
+		}
+	}()
+
 	slog.Info(fmt.Sprintf("Server is running on port: %s\n", s.Port))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	for {
 		conn, err := l.Accept()
@@ -27,29 +39,28 @@ func (s *Server) Run() error {
 			return fmt.Errorf("couldn't listen to network: %v\n", err)
 		}
 
-		go s.handle(conn)
+		go s.handle(ctx, conn)
 	}
 }
 
-func (s *Server) handle(conn net.Conn) {
-	slog.Info(fmt.Sprintf("Request arrive from: %s", conn.RemoteAddr().String()))
+func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
+	slog.Info(fmt.Sprintf("Request arrive from: %s", conn.RemoteAddr().String()))
 
-	rd := bufio.NewReader(conn)
-	v, err := parse(rd)
-	if err != nil {
-		slog.Error(fmt.Sprintf("processing conn: %v\n", err))
-		conn.Write([]byte("invalid type\n"))
-		return
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			handleCommand(conn, s.m)
+			return
+		}
 	}
-
-	fmt.Println("Received value:", v)
-
-	conn.Write([]byte("Your type is valid\n"))
 }
 
 func NewServer(port string) *Server {
 	return &Server{
 		Port: port,
+		m:    ds.NewRedisMap(),
 	}
 }

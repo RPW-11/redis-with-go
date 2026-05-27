@@ -9,33 +9,36 @@ import (
 	"strings"
 )
 
+type DataType byte
+
 type Value struct {
-	typ    byte
+	typ    DataType
 	str    string
 	num    int
 	bl     bool
+	fl     float64
 	arr    []*Value
 	isNull bool
 }
 
 var (
-	ErrInvalidType = errors.New("parse: invalid type")
+	ErrInvalidType = errors.New("invalid type")
 )
 
 const (
 	CRLF = "\r\n"
-	LF   = byte('\n')
+	LF   = '\n'
 )
 
 const (
-	StringType  = byte('+')
-	ErrorType   = byte('-')
-	IntegerType = byte(':')
-	BStringType = byte('$')
-	ArrayType   = byte('*')
-	NullType    = byte('_')
-	BooleanType = byte('#')
-	DoubleType  = byte(',')
+	StringType  DataType = '+'
+	ErrorType   DataType = '-'
+	IntegerType DataType = ':'
+	BStringType DataType = '$'
+	ArrayType   DataType = '*'
+	NullType    DataType = '_'
+	BooleanType DataType = '#'
+	DoubleType  DataType = ','
 )
 
 func parse(rd *bufio.Reader) (Value, error) {
@@ -44,7 +47,7 @@ func parse(rd *bufio.Reader) (Value, error) {
 		return Value{}, fmt.Errorf("parse: %w", err)
 	}
 
-	switch typ {
+	switch DataType(typ) {
 	case StringType:
 		return parseString(rd)
 	case IntegerType:
@@ -97,20 +100,13 @@ func parseBString(rd *bufio.Reader) (Value, error) {
 		return Value{}, err
 	}
 
-	arr := make([]*Value, 0, l)
-	for v := range strings.SplitSeq(string(payload), CRLF) {
-		arr = append(arr, &Value{
-			typ: StringType,
-			str: v,
-		})
-	}
-
+	// read the last CRLF
 	rd.ReadByte()
 	rd.ReadByte()
 
 	return Value{
 		typ: BStringType,
-		arr: arr,
+		str: string(payload),
 	}, nil
 }
 
@@ -193,7 +189,21 @@ func parseBooleanType(rd *bufio.Reader) (Value, error) {
 	}, nil
 }
 
-// TODO: Implement this
 func parseDoubleType(rd *bufio.Reader) (Value, error) {
-	return Value{}, nil
+	s, err := rd.ReadString(LF)
+	if err != nil {
+		return Value{}, err
+	}
+
+	s = strings.TrimRight(s, CRLF)
+
+	fl, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return Value{}, err
+	}
+
+	return Value{
+		typ: DoubleType,
+		fl:  fl,
+	}, nil
 }
