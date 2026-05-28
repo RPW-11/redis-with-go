@@ -1,9 +1,9 @@
 package resp
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 func NewString(s string) *Value {
@@ -20,10 +20,10 @@ func NewError(err error) *Value {
 	}
 }
 
-func NewBulkString(s string) *Value {
+func NewBulkString(b []byte) *Value {
 	return &Value{
 		Typ:   BulkStringType,
-		Bytes: []byte(s),
+		Bytes: b,
 	}
 }
 
@@ -62,7 +62,7 @@ func NewDouble(f float64) *Value {
 	}
 }
 
-func Serialize(v *Value) (string, error) {
+func Serialize(v *Value) ([]byte, error) {
 	switch v.Typ {
 	case StringType:
 		return serializeString(v), nil
@@ -82,49 +82,55 @@ func Serialize(v *Value) (string, error) {
 		return serializeDouble(v), nil
 	}
 
-	return "", fmt.Errorf("invalid type")
+	return nil, fmt.Errorf("invalid type")
 }
 
-func serializeString(v *Value) string {
-	return "+" + v.Str + "\r\n"
+func serializeString(v *Value) []byte {
+	return []byte("+" + v.Str + "\r\n")
 }
 
-func serializeError(v *Value) string {
-	return "-ERR " + v.Str + "\r\n"
+func serializeError(v *Value) []byte {
+	return []byte("-ERR " + v.Str + "\r\n")
 }
 
-func serializeBulkString(v *Value) string {
-	return "$" + strconv.Itoa(len(v.Bytes)) + "\r\n" + string(v.Bytes) + "\r\n"
+func serializeBulkString(v *Value) []byte {
+	prefix := []byte("$" + strconv.Itoa(len(v.Bytes)) + "\r\n")
+	suffix := []byte("\r\n")
+	out := make([]byte, 0, len(prefix)+len(v.Bytes)+len(suffix))
+	out = append(out, prefix...)
+	out = append(out, v.Bytes...)
+	out = append(out, suffix...)
+	return out
 }
 
-func serializeInteger(v *Value) string {
-	return ":" + strconv.Itoa(v.Num) + "\r\n"
+func serializeInteger(v *Value) []byte {
+	return []byte(":" + strconv.Itoa(v.Num) + "\r\n")
 }
 
-func serializeArray(v *Value) (string, error) {
-	var sb strings.Builder
-	sb.WriteString("*" + strconv.Itoa(len(v.Arr)) + "\r\n")
+func serializeArray(v *Value) ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteString("*" + strconv.Itoa(len(v.Arr)) + "\r\n")
 	for _, elem := range v.Arr {
-		s, err := Serialize(elem)
+		b, err := Serialize(elem)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		sb.WriteString(s)
+		buf.Write(b)
 	}
-	return sb.String(), nil
+	return buf.Bytes(), nil
 }
 
-func serializeNull() string {
-	return "_\r\n"
+func serializeNull() []byte {
+	return []byte("_\r\n")
 }
 
-func serializeBoolean(v *Value) string {
+func serializeBoolean(v *Value) []byte {
 	if v.Bool {
-		return "#t\r\n"
+		return []byte("#t\r\n")
 	}
-	return "#f\r\n"
+	return []byte("#f\r\n")
 }
 
-func serializeDouble(v *Value) string {
-	return "," + strconv.FormatFloat(v.Float, 'f', -1, 64) + "\r\n"
+func serializeDouble(v *Value) []byte {
+	return []byte("," + strconv.FormatFloat(v.Float, 'f', -1, 64) + "\r\n")
 }

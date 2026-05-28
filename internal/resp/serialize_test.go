@@ -1,6 +1,7 @@
 package resp
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 )
@@ -14,124 +15,124 @@ func TestSerialize_InvalidType(t *testing.T) {
 
 func TestSerializeString(t *testing.T) {
 	t.Run("simple string", func(t *testing.T) {
-		s, err := Serialize(NewString("OK"))
+		b, err := Serialize(NewString("OK"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != "+OK\r\n" {
-			t.Fatalf("expected '+OK\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte("+OK\r\n")) {
+			t.Fatalf("expected '+OK\\r\\n', got %q", b)
 		}
 	})
 
 	t.Run("empty string", func(t *testing.T) {
-		s, err := Serialize(NewString(""))
+		b, err := Serialize(NewString(""))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != "+\r\n" {
-			t.Fatalf("expected '+\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte("+\r\n")) {
+			t.Fatalf("expected '+\\r\\n', got %q", b)
 		}
 	})
 }
 
 func TestSerializeError(t *testing.T) {
 	t.Run("error message", func(t *testing.T) {
-		s, err := Serialize(NewError(errors.New("something went wrong")))
+		b, err := Serialize(NewError(errors.New("something went wrong")))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != "-ERR something went wrong\r\n" {
-			t.Fatalf("unexpected output: %q", s)
+		if !bytes.Equal(b, []byte("-ERR something went wrong\r\n")) {
+			t.Fatalf("unexpected output: %q", b)
 		}
 	})
 }
 
 func TestSerializeBulkString(t *testing.T) {
 	t.Run("simple bulk string", func(t *testing.T) {
-		s, err := Serialize(NewBulkString("hello"))
+		b, err := Serialize(NewBulkString([]byte("hello")))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != "$5\r\nhello\r\n" {
-			t.Fatalf("expected '$5\\r\\nhello\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte("$5\r\nhello\r\n")) {
+			t.Fatalf("expected '$5\\r\\nhello\\r\\n', got %q", b)
 		}
 	})
 
 	t.Run("empty bulk string", func(t *testing.T) {
-		s, err := Serialize(NewBulkString(""))
+		b, err := Serialize(NewBulkString([]byte("")))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != "$0\r\n\r\n" {
-			t.Fatalf("expected '$0\\r\\n\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte("$0\r\n\r\n")) {
+			t.Fatalf("expected '$0\\r\\n\\r\\n', got %q", b)
 		}
 	})
 }
 
 func TestSerializeInteger(t *testing.T) {
 	t.Run("positive", func(t *testing.T) {
-		s, err := Serialize(NewInteger(42))
+		b, err := Serialize(NewInteger(42))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != ":42\r\n" {
-			t.Fatalf("expected ':42\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte(":42\r\n")) {
+			t.Fatalf("expected ':42\\r\\n', got %q", b)
 		}
 	})
 
 	t.Run("zero", func(t *testing.T) {
-		s, err := Serialize(NewInteger(0))
+		b, err := Serialize(NewInteger(0))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != ":0\r\n" {
-			t.Fatalf("expected ':0\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte(":0\r\n")) {
+			t.Fatalf("expected ':0\\r\\n', got %q", b)
 		}
 	})
 
 	t.Run("negative", func(t *testing.T) {
-		s, err := Serialize(NewInteger(-99))
+		b, err := Serialize(NewInteger(-99))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != ":-99\r\n" {
-			t.Fatalf("expected ':-99\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte(":-99\r\n")) {
+			t.Fatalf("expected ':-99\\r\\n', got %q", b)
 		}
 	})
 }
 
 func TestSerializeArray(t *testing.T) {
 	t.Run("empty array", func(t *testing.T) {
-		s, err := Serialize(NewArray([]*Value{}))
+		b, err := Serialize(NewArray([]*Value{}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != "*0\r\n" {
-			t.Fatalf("expected '*0\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte("*0\r\n")) {
+			t.Fatalf("expected '*0\\r\\n', got %q", b)
 		}
 	})
 
 	t.Run("array of strings", func(t *testing.T) {
-		s, err := Serialize(NewArray([]*Value{
+		b, err := Serialize(NewArray([]*Value{
 			NewString("a"),
 			NewString("b"),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != "*2\r\n+a\r\n+b\r\n" {
-			t.Fatalf("unexpected output: %q", s)
+		if !bytes.Equal(b, []byte("*2\r\n+a\r\n+b\r\n")) {
+			t.Fatalf("unexpected output: %q", b)
 		}
 	})
 
 	t.Run("nested array", func(t *testing.T) {
 		inner := NewArray([]*Value{NewString("x")})
-		s, err := Serialize(NewArray([]*Value{inner}))
+		b, err := Serialize(NewArray([]*Value{inner}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != "*1\r\n*1\r\n+x\r\n" {
-			t.Fatalf("unexpected output: %q", s)
+		if !bytes.Equal(b, []byte("*1\r\n*1\r\n+x\r\n")) {
+			t.Fatalf("unexpected output: %q", b)
 		}
 	})
 
@@ -146,75 +147,75 @@ func TestSerializeArray(t *testing.T) {
 }
 
 func TestSerializeNull(t *testing.T) {
-	s, err := Serialize(NewNull())
+	b, err := Serialize(NewNull())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if s != "_\r\n" {
-		t.Fatalf("expected '_\\r\\n', got %q", s)
+	if !bytes.Equal(b, []byte("_\r\n")) {
+		t.Fatalf("expected '_\\r\\n', got %q", b)
 	}
 }
 
 func TestSerializeBoolean(t *testing.T) {
 	t.Run("true", func(t *testing.T) {
-		s, err := Serialize(NewBoolean(true))
+		b, err := Serialize(NewBoolean(true))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != "#t\r\n" {
-			t.Fatalf("expected '#t\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte("#t\r\n")) {
+			t.Fatalf("expected '#t\\r\\n', got %q", b)
 		}
 	})
 
 	t.Run("false", func(t *testing.T) {
-		s, err := Serialize(NewBoolean(false))
+		b, err := Serialize(NewBoolean(false))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != "#f\r\n" {
-			t.Fatalf("expected '#f\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte("#f\r\n")) {
+			t.Fatalf("expected '#f\\r\\n', got %q", b)
 		}
 	})
 }
 
 func TestSerializeDouble(t *testing.T) {
 	t.Run("float", func(t *testing.T) {
-		s, err := Serialize(NewDouble(3.14))
+		b, err := Serialize(NewDouble(3.14))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != ",3.14\r\n" {
-			t.Fatalf("expected ',3.14\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte(",3.14\r\n")) {
+			t.Fatalf("expected ',3.14\\r\\n', got %q", b)
 		}
 	})
 
 	t.Run("integer-like", func(t *testing.T) {
-		s, err := Serialize(NewDouble(42))
+		b, err := Serialize(NewDouble(42))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != ",42\r\n" {
-			t.Fatalf("expected ',42\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte(",42\r\n")) {
+			t.Fatalf("expected ',42\\r\\n', got %q", b)
 		}
 	})
 
 	t.Run("negative", func(t *testing.T) {
-		s, err := Serialize(NewDouble(-1.5))
+		b, err := Serialize(NewDouble(-1.5))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != ",-1.5\r\n" {
-			t.Fatalf("expected ',-1.5\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte(",-1.5\r\n")) {
+			t.Fatalf("expected ',-1.5\\r\\n', got %q", b)
 		}
 	})
 
 	t.Run("zero", func(t *testing.T) {
-		s, err := Serialize(NewDouble(0))
+		b, err := Serialize(NewDouble(0))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if s != ",0\r\n" {
-			t.Fatalf("expected ',0\\r\\n', got %q", s)
+		if !bytes.Equal(b, []byte(",0\r\n")) {
+			t.Fatalf("expected ',0\\r\\n', got %q", b)
 		}
 	})
 }
@@ -222,8 +223,8 @@ func TestSerializeDouble(t *testing.T) {
 // Round-trip: serialize then parse back and verify the value is intact.
 func TestSerializeRoundTrip(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
-		s, _ := Serialize(NewString("hello"))
-		v, err := Parse(newReader(s))
+		b, _ := Serialize(NewString("hello"))
+		v, err := Parse(newReader(string(b)))
 		if err != nil {
 			t.Fatalf("unexpected parse error: %v", err)
 		}
@@ -233,8 +234,8 @@ func TestSerializeRoundTrip(t *testing.T) {
 	})
 
 	t.Run("bulk string", func(t *testing.T) {
-		s, _ := Serialize(NewBulkString("world"))
-		v, err := Parse(newReader(s))
+		b, _ := Serialize(NewBulkString([]byte("world")))
+		v, err := Parse(newReader(string(b)))
 		if err != nil {
 			t.Fatalf("unexpected parse error: %v", err)
 		}
@@ -244,8 +245,8 @@ func TestSerializeRoundTrip(t *testing.T) {
 	})
 
 	t.Run("integer", func(t *testing.T) {
-		s, _ := Serialize(NewInteger(123))
-		v, err := Parse(newReader(s))
+		b, _ := Serialize(NewInteger(123))
+		v, err := Parse(newReader(string(b)))
 		if err != nil {
 			t.Fatalf("unexpected parse error: %v", err)
 		}
@@ -255,8 +256,8 @@ func TestSerializeRoundTrip(t *testing.T) {
 	})
 
 	t.Run("boolean", func(t *testing.T) {
-		s, _ := Serialize(NewBoolean(true))
-		v, err := Parse(newReader(s))
+		b, _ := Serialize(NewBoolean(true))
+		v, err := Parse(newReader(string(b)))
 		if err != nil {
 			t.Fatalf("unexpected parse error: %v", err)
 		}
@@ -266,8 +267,8 @@ func TestSerializeRoundTrip(t *testing.T) {
 	})
 
 	t.Run("null", func(t *testing.T) {
-		s, _ := Serialize(NewNull())
-		v, err := Parse(newReader(s))
+		b, _ := Serialize(NewNull())
+		v, err := Parse(newReader(string(b)))
 		if err != nil {
 			t.Fatalf("unexpected parse error: %v", err)
 		}
@@ -277,8 +278,8 @@ func TestSerializeRoundTrip(t *testing.T) {
 	})
 
 	t.Run("double", func(t *testing.T) {
-		s, _ := Serialize(NewDouble(2.5))
-		v, err := Parse(newReader(s))
+		b, _ := Serialize(NewDouble(2.5))
+		v, err := Parse(newReader(string(b)))
 		if err != nil {
 			t.Fatalf("unexpected parse error: %v", err)
 		}
@@ -288,12 +289,12 @@ func TestSerializeRoundTrip(t *testing.T) {
 	})
 
 	t.Run("array of bulk strings", func(t *testing.T) {
-		s, _ := Serialize(NewArray([]*Value{
-			NewBulkString("SET"),
-			NewBulkString("key"),
-			NewBulkString("val"),
+		b, _ := Serialize(NewArray([]*Value{
+			NewBulkString([]byte("SET")),
+			NewBulkString([]byte("key")),
+			NewBulkString([]byte("val")),
 		}))
-		v, err := Parse(newReader(s))
+		v, err := Parse(newReader(string(b)))
 		if err != nil {
 			t.Fatalf("unexpected parse error: %v", err)
 		}

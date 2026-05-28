@@ -2,12 +2,14 @@ package command
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"net"
 
 	ds "github.com/RPW-11/redis-with-go/internal/data_structures"
 	"github.com/RPW-11/redis-with-go/internal/resp"
 )
+
 
 type Command string
 
@@ -33,15 +35,18 @@ func Handle(conn net.Conn, m *ds.RedisMap) {
 	rd := bufio.NewReader(conn)
 	v, err := resp.Parse(rd)
 	if err != nil {
-		fmt.Fprintf(conn, "-ERR %v\r\n", err)
+		errBytes, _ := resp.Serialize(resp.NewError(err))
+		conn.Write(errBytes)
 		return
 	}
 	if v.Typ != resp.ArrayType {
-		fmt.Fprintf(conn, "-ERR command format must be an array\r\n")
+		errBytes, _ := resp.Serialize(resp.NewError(errors.New("command must be in array type")))
+		conn.Write(errBytes)
 		return
 	}
 	if len(v.Arr) == 0 {
-		fmt.Fprintf(conn, "-ERR empty command\r\n")
+		errBytes, _ := resp.Serialize(resp.NewError(errors.New("empty payload")))
+		conn.Write(errBytes)
 		return
 	}
 
@@ -51,32 +56,38 @@ func Handle(conn net.Conn, m *ds.RedisMap) {
 	case Set:
 		err = handleSetCmd(v.Arr, m)
 		if err != nil {
-			fmt.Fprintf(conn, "-ERR %v\r\n", err)
+			errBytes, _ := resp.Serialize(resp.NewError(err))
+			conn.Write(errBytes)
 			return
 		}
-		conn.Write([]byte("+OK\r\n"))
+		res, _ := resp.Serialize(resp.NewString("OK"))
+		conn.Write(res)
 		return
 	case Get:
 		v, err := handleGetCmd(v.Arr, m)
 		if err != nil {
-			fmt.Fprintf(conn, "-ERR %v\r\n", err)
+			errBytes, _ := resp.Serialize(resp.NewError(err))
+			conn.Write(errBytes)
 			return
 		}
 		if v == nil {
-			conn.Write([]byte("_\r\n"))
+			nilBytes, _ := resp.Serialize(resp.NewNull())
+			conn.Write(nilBytes)
 			return
 		}
 
-		data := fmt.Sprintf("$%d\r\n%s\r\n", len(v), v)
-		conn.Write([]byte(data))
+		data, _ := resp.Serialize(resp.NewBulkString(v))
+		conn.Write(data)
 		return
 	case Del:
 		err = handleDelCmd(v.Arr, m)
 		if err != nil {
-			fmt.Fprintf(conn, "-ERR %v\r\n", err)
+			errBytes, _ := resp.Serialize(resp.NewError(err))
+			conn.Write(errBytes)
 			return
 		}
-		conn.Write([]byte("+OK\r\n"))
+		res, _ := resp.Serialize(resp.NewString("OK"))
+		conn.Write(res)
 		return
 	case Expire:
 		handleExpireCmd()
@@ -86,7 +97,8 @@ func Handle(conn net.Conn, m *ds.RedisMap) {
 		return
 	}
 
-	fmt.Fprintf(conn, "-ERR command is invalid\r\n")
+	errBytes, _ := resp.Serialize(resp.NewError(errors.New("command is invalid")))
+	conn.Write(errBytes)
 }
 
 func handleSetCmd(arr []*resp.Value, m *ds.RedisMap) error {
