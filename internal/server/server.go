@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 
+	"github.com/RPW-11/redis-with-go/internal/command"
 	ds "github.com/RPW-11/redis-with-go/internal/data_structures"
 )
 
@@ -52,7 +53,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 		case <-ctx.Done():
 			return
 		default:
-			handleCommand(conn, s.m)
+			command.Handle(conn, s.m)
 			return
 		}
 	}
