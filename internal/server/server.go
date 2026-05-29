@@ -7,12 +7,12 @@ import (
 	"net"
 
 	"github.com/RPW-11/redis-with-go/internal/command"
-	ds "github.com/RPW-11/redis-with-go/internal/data_structures"
+	"github.com/RPW-11/redis-with-go/internal/lru"
 )
 
 type Server struct {
 	Port string
-	m    *ds.RedisMap
+	m    *lru.LRUEngine
 }
 
 func (s *Server) Run() error {
@@ -59,9 +59,13 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}
 }
 
-func NewServer(port string) *Server {
+func NewServer(port string, cap int) (*Server, error) {
+	m, err := lru.NewLRUEngine(cap)
+	if err != nil {
+		return nil, err
+	}
 	return &Server{
 		Port: port,
-		m:    ds.NewRedisMap(),
-	}
+		m:    m,
+	}, nil
 }

@@ -1,30 +1,30 @@
 package datastructures
 
-// DLNode defines the node for the doubly linkedlist.
-// It accepts generic any type
+// DLNode is a node in a doubly linked list. Id mirrors the map key for O(1) map deletion.
 type DLNode[T any] struct {
+	Id   string
 	Val  T
 	Prev *DLNode[T]
 	Next *DLNode[T]
 }
 
-// DoublyLinkedList defines the linkedlist datastructure.
-// It accepts generic any type
+// DoublyLinkedList is a generic doubly linked list.
 type DoublyLinkedList[T any] struct {
 	n    int
 	Head *DLNode[T]
 	Tail *DLNode[T]
 }
 
-// Len returns the length of the linkedlist
+// Len returns the number of elements in the list.
 func (dl *DoublyLinkedList[T]) Len() int {
 	return dl.n
 }
 
-// InsertHead inserts the value at the head of the linkedlist
-func (dl *DoublyLinkedList[T]) InsertHead(v T) {
+// InsertHead inserts a new node at the front of the list.
+func (dl *DoublyLinkedList[T]) InsertHead(id string, v T) {
 	dl.n++
 	node := &DLNode[T]{
+		Id:  id,
 		Val: v,
 	}
 
@@ -39,10 +39,11 @@ func (dl *DoublyLinkedList[T]) InsertHead(v T) {
 	dl.Head = node
 }
 
-// InsertTail inserts the value at the end of the linkedlist
-func (dl *DoublyLinkedList[T]) InsertTail(v T) {
+// InsertTail inserts a new node at the back of the list.
+func (dl *DoublyLinkedList[T]) InsertTail(id string, v T) {
 	dl.n++
 	node := &DLNode[T]{
+		Id:  id,
 		Val: v,
 	}
 
@@ -57,20 +58,21 @@ func (dl *DoublyLinkedList[T]) InsertTail(v T) {
 	dl.Tail = node
 }
 
-// InsertAt inserts the value at the `pos` position
-func (dl *DoublyLinkedList[T]) InsertAt(v T, pos int) {
+// InsertAt inserts a new node at position pos (0-indexed). Clamps to head/tail if out of range.
+func (dl *DoublyLinkedList[T]) InsertAt(id string, v T, pos int) {
 	if pos <= 0 {
-		dl.InsertHead(v)
+		dl.InsertHead(id, v)
 		return
 	}
 
 	if pos >= dl.n-1 {
-		dl.InsertTail(v)
+		dl.InsertTail(id, v)
 		return
 	}
 
 	dl.n++
 	node := &DLNode[T]{
+		Id:  id,
 		Val: v,
 	}
 
@@ -86,7 +88,7 @@ func (dl *DoublyLinkedList[T]) InsertAt(v T, pos int) {
 	temp.Prev = node
 }
 
-// FindFunc finds the element in the list with the specified function criteria and returns it
+// FindFunc returns the first element matching f, searching from both ends simultaneously.
 func (dl *DoublyLinkedList[T]) FindFunc(f func(v T) bool) (T, bool) {
 	var zero T
 
@@ -118,39 +120,43 @@ func (dl *DoublyLinkedList[T]) FindFunc(f func(v T) bool) (T, bool) {
 	return zero, false
 }
 
-// RemoveTail removes the data pointed by the tail
-func (dl *DoublyLinkedList[T]) RemoveTail() {
+// RemoveTail removes the tail node and returns it. Returns nil if the list is empty.
+func (dl *DoublyLinkedList[T]) RemoveTail() *DLNode[T] {
 	if dl.Tail == nil {
-		return
+		return nil
 	}
+	removed := dl.Tail
 	if dl.Tail.Prev == nil {
 		dl.Head = nil
 		dl.Tail = nil
-		return
+		return removed
 	}
 
 	dl.Tail = dl.Tail.Prev
 	dl.Tail.Next = nil
 	dl.n--
+	return removed
 }
 
-// RemoveHead removes the data pointed by the head
-func (dl *DoublyLinkedList[T]) RemoveHead() {
+// RemoveHead removes the head node and returns it. Returns nil if the list is empty.
+func (dl *DoublyLinkedList[T]) RemoveHead() *DLNode[T] {
 	if dl.Head == nil {
-		return
+		return nil
 	}
+	removed := dl.Head
 	if dl.Head.Next == nil {
 		dl.Tail = nil
 		dl.Head = nil
-		return
+		return removed
 	}
 
 	dl.Head = dl.Head.Next
 	dl.Head.Prev = nil
 	dl.n--
+	return removed
 }
 
-// MoveToHead moves the given input node to the head of list
+// MoveToHead moves node to the front. No-op if node is nil, the only element, or already the head.
 func (dl *DoublyLinkedList[T]) MoveToHead(node *DLNode[T]) {
 	if node == nil || dl.Head.Next == nil || dl.Head == node {
 		return
@@ -170,7 +176,7 @@ func (dl *DoublyLinkedList[T]) MoveToHead(node *DLNode[T]) {
 	dl.Head = node
 }
 
-// NewDoublyLinkedList creates a new doubly linked list with the specified type
+// NewDoublyLinkedList returns an empty doubly linked list.
 func NewDoublyLinkedList[T any]() *DoublyLinkedList[T] {
 	return &DoublyLinkedList[T]{}
 }

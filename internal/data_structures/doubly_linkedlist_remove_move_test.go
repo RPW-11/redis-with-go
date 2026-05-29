@@ -13,7 +13,7 @@ func TestRemoveTail(t *testing.T) {
 
 	t.Run("single element clears head and tail", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertHead(1)
+		dl.InsertHead("", 1)
 		dl.RemoveTail()
 		if dl.Head != nil {
 			t.Fatal("expected nil Head after removing sole element")
@@ -25,9 +25,9 @@ func TestRemoveTail(t *testing.T) {
 
 	t.Run("length decrements", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2)
-		dl.InsertTail(3)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2)
+		dl.InsertTail("", 3)
 		dl.RemoveTail()
 		if dl.Len() != 2 {
 			t.Fatalf("expected length 2, got %d", dl.Len())
@@ -36,8 +36,8 @@ func TestRemoveTail(t *testing.T) {
 
 	t.Run("new tail next is nil", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2)
 		dl.RemoveTail()
 		if dl.Tail.Next != nil {
 			t.Fatal("new Tail.Next must be nil after RemoveTail")
@@ -47,7 +47,7 @@ func TestRemoveTail(t *testing.T) {
 	t.Run("forward traversal stops at new tail", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		dl.RemoveTail() // removes 3; list should be [1, 2]
 
@@ -66,7 +66,7 @@ func TestRemoveTail(t *testing.T) {
 	t.Run("backward traversal intact after removal", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		dl.RemoveTail() // list should be [1, 2]
 
@@ -84,12 +84,36 @@ func TestRemoveTail(t *testing.T) {
 
 	t.Run("correct tail value after removal", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2)
-		dl.InsertTail(3)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2)
+		dl.InsertTail("", 3)
 		dl.RemoveTail()
 		if dl.Tail.Val != 2 {
 			t.Fatalf("expected Tail.Val=2, got %d", dl.Tail.Val)
+		}
+	})
+
+	t.Run("returns removed node", func(t *testing.T) {
+		dl := NewDoublyLinkedList[int]()
+		dl.InsertTail("k1", 1)
+		dl.InsertTail("k2", 2)
+		dl.InsertTail("k3", 3)
+		node := dl.RemoveTail()
+		if node == nil {
+			t.Fatal("expected non-nil removed node")
+		}
+		if node.Val != 3 {
+			t.Fatalf("expected removed Val=3, got %d", node.Val)
+		}
+		if node.Id != "k3" {
+			t.Fatalf("expected removed Id=k3, got %s", node.Id)
+		}
+	})
+
+	t.Run("returns nil on empty list", func(t *testing.T) {
+		dl := NewDoublyLinkedList[int]()
+		if dl.RemoveTail() != nil {
+			t.Fatal("expected nil from empty list")
 		}
 	})
 }
@@ -105,7 +129,7 @@ func TestRemoveHead(t *testing.T) {
 
 	t.Run("single element clears head and tail", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertHead(1)
+		dl.InsertHead("", 1)
 		dl.RemoveHead()
 		if dl.Head != nil {
 			t.Fatal("expected nil Head after removing sole element")
@@ -117,9 +141,9 @@ func TestRemoveHead(t *testing.T) {
 
 	t.Run("length decrements", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2)
-		dl.InsertTail(3)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2)
+		dl.InsertTail("", 3)
 		dl.RemoveHead()
 		if dl.Len() != 2 {
 			t.Fatalf("expected length 2, got %d", dl.Len())
@@ -128,8 +152,8 @@ func TestRemoveHead(t *testing.T) {
 
 	t.Run("new head prev is nil", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2)
 		dl.RemoveHead()
 		if dl.Head.Prev != nil {
 			t.Fatal("new Head.Prev must be nil after RemoveHead")
@@ -139,7 +163,7 @@ func TestRemoveHead(t *testing.T) {
 	t.Run("forward traversal starts at new head", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		dl.RemoveHead() // removes 1; list should be [2, 3]
 
@@ -158,7 +182,7 @@ func TestRemoveHead(t *testing.T) {
 	t.Run("backward traversal intact after removal", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		dl.RemoveHead() // list should be [2, 3]
 
@@ -176,12 +200,36 @@ func TestRemoveHead(t *testing.T) {
 
 	t.Run("correct head value after removal", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2)
-		dl.InsertTail(3)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2)
+		dl.InsertTail("", 3)
 		dl.RemoveHead()
 		if dl.Head.Val != 2 {
 			t.Fatalf("expected Head.Val=2, got %d", dl.Head.Val)
+		}
+	})
+
+	t.Run("returns removed node", func(t *testing.T) {
+		dl := NewDoublyLinkedList[int]()
+		dl.InsertTail("k1", 1)
+		dl.InsertTail("k2", 2)
+		dl.InsertTail("k3", 3)
+		node := dl.RemoveHead()
+		if node == nil {
+			t.Fatal("expected non-nil removed node")
+		}
+		if node.Val != 1 {
+			t.Fatalf("expected removed Val=1, got %d", node.Val)
+		}
+		if node.Id != "k1" {
+			t.Fatalf("expected removed Id=k1, got %s", node.Id)
+		}
+	})
+
+	t.Run("returns nil on empty list", func(t *testing.T) {
+		dl := NewDoublyLinkedList[int]()
+		if dl.RemoveHead() != nil {
+			t.Fatal("expected nil from empty list")
 		}
 	})
 }
@@ -189,13 +237,13 @@ func TestRemoveHead(t *testing.T) {
 func TestMoveToHead(t *testing.T) {
 	t.Run("nil node does not panic", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
+		dl.InsertTail("", 1)
 		dl.MoveToHead(nil)
 	})
 
 	t.Run("single element node does not panic", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
+		dl.InsertTail("", 1)
 		dl.MoveToHead(dl.Head)
 		if dl.Head.Val != 1 {
 			t.Fatalf("expected Head.Val=1, got %d", dl.Head.Val)
@@ -208,7 +256,7 @@ func TestMoveToHead(t *testing.T) {
 	t.Run("node already at head is a no-op", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		dl.MoveToHead(dl.Head) // move 1, already head
 
@@ -227,7 +275,7 @@ func TestMoveToHead(t *testing.T) {
 	t.Run("moving tail updates Tail pointer", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		tail := dl.Tail
 		dl.MoveToHead(tail) // move 3 to head; list should be [3, 1, 2]
@@ -243,7 +291,7 @@ func TestMoveToHead(t *testing.T) {
 	t.Run("moving tail does not panic", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		dl.MoveToHead(dl.Tail)
 	})
@@ -251,7 +299,7 @@ func TestMoveToHead(t *testing.T) {
 	t.Run("middle node moved to head: forward links correct", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		middle := dl.Head.Next // node with value 2
 		dl.MoveToHead(middle)  // list should be [2, 1, 3]
@@ -271,7 +319,7 @@ func TestMoveToHead(t *testing.T) {
 	t.Run("middle node moved to head: backward links correct", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		middle := dl.Head.Next // node with value 2
 		dl.MoveToHead(middle)  // list should be [2, 1, 3], backward: [3, 1, 2]
@@ -291,7 +339,7 @@ func TestMoveToHead(t *testing.T) {
 	t.Run("tail moved to head: forward links correct", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		dl.MoveToHead(dl.Tail) // list should be [3, 1, 2]
 
@@ -310,7 +358,7 @@ func TestMoveToHead(t *testing.T) {
 	t.Run("tail moved to head: backward links correct", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		dl.MoveToHead(dl.Tail) // list should be [3, 1, 2], backward: [2, 1, 3]
 
@@ -329,7 +377,7 @@ func TestMoveToHead(t *testing.T) {
 	t.Run("length unchanged after move", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		dl.MoveToHead(dl.Head.Next)
 		if dl.Len() != 3 {
@@ -340,7 +388,7 @@ func TestMoveToHead(t *testing.T) {
 	t.Run("new head prev is nil after move", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		dl.MoveToHead(dl.Head.Next)
 		if dl.Head.Prev != nil {

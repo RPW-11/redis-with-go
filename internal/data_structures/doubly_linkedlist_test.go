@@ -52,12 +52,12 @@ func TestLen(t *testing.T) {
 		t.Fatalf("expected 0, got %d", dl.Len())
 	}
 
-	dl.InsertHead(1)
+	dl.InsertHead("", 1)
 	if dl.Len() != 1 {
 		t.Fatalf("expected 1, got %d", dl.Len())
 	}
 
-	dl.InsertTail(2)
+	dl.InsertTail("", 2)
 	if dl.Len() != 2 {
 		t.Fatalf("expected 2, got %d", dl.Len())
 	}
@@ -66,7 +66,7 @@ func TestLen(t *testing.T) {
 func TestInsertHead(t *testing.T) {
 	t.Run("single element", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertHead(42)
+		dl.InsertHead("", 42)
 
 		if dl.Head == nil || dl.Tail == nil {
 			t.Fatal("Head and Tail must not be nil")
@@ -86,7 +86,7 @@ func TestInsertHead(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		nums := []int{1, 2, 3, 4, 5}
 		for _, v := range nums {
-			dl.InsertHead(v)
+			dl.InsertHead("", v)
 		}
 
 		if dl.Len() != len(nums) {
@@ -106,7 +106,7 @@ func TestInsertHead(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		nums := []int{1, 2, 3}
 		for _, v := range nums {
-			dl.InsertHead(v)
+			dl.InsertHead("", v)
 		}
 
 		// forward: [3, 2, 1], so backward from tail: [1, 2, 3]
@@ -120,8 +120,8 @@ func TestInsertHead(t *testing.T) {
 
 	t.Run("head prev is nil", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertHead(1)
-		dl.InsertHead(2)
+		dl.InsertHead("", 1)
+		dl.InsertHead("", 2)
 		if dl.Head.Prev != nil {
 			t.Fatal("Head.Prev must be nil")
 		}
@@ -129,8 +129,8 @@ func TestInsertHead(t *testing.T) {
 
 	t.Run("tail next is nil", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertHead(1)
-		dl.InsertHead(2)
+		dl.InsertHead("", 1)
+		dl.InsertHead("", 2)
 		if dl.Tail.Next != nil {
 			t.Fatal("Tail.Next must be nil")
 		}
@@ -140,7 +140,7 @@ func TestInsertHead(t *testing.T) {
 func TestInsertTail(t *testing.T) {
 	t.Run("single element", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(42)
+		dl.InsertTail("", 42)
 
 		if dl.Head == nil || dl.Tail == nil {
 			t.Fatal("Head and Tail must not be nil")
@@ -160,7 +160,7 @@ func TestInsertTail(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		nums := []int{1, 2, 3, 4, 5}
 		for _, v := range nums {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 
 		if dl.Len() != len(nums) {
@@ -179,7 +179,7 @@ func TestInsertTail(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		nums := []int{1, 2, 3}
 		for _, v := range nums {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 
 		// forward: [1, 2, 3], so backward from tail: [3, 2, 1]
@@ -194,8 +194,8 @@ func TestInsertTail(t *testing.T) {
 
 	t.Run("tail next is nil", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2)
 		if dl.Tail.Next != nil {
 			t.Fatal("Tail.Next must be nil")
 		}
@@ -203,8 +203,8 @@ func TestInsertTail(t *testing.T) {
 
 	t.Run("head prev is nil", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2)
 		if dl.Head.Prev != nil {
 			t.Fatal("Head.Prev must be nil")
 		}
@@ -214,9 +214,9 @@ func TestInsertTail(t *testing.T) {
 func TestInsertAt(t *testing.T) {
 	t.Run("zero pos delegates to head", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2)
-		dl.InsertAt(99, 0)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2)
+		dl.InsertAt("", 99, 0)
 
 		if dl.Head.Val != 99 {
 			t.Fatalf("expected Head 99, got %d", dl.Head.Val)
@@ -228,8 +228,8 @@ func TestInsertAt(t *testing.T) {
 
 	t.Run("negative pos delegates to head", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertAt(99, -5)
+		dl.InsertTail("", 1)
+		dl.InsertAt("", 99, -5)
 
 		if dl.Head.Val != 99 {
 			t.Fatalf("expected Head 99, got %d", dl.Head.Val)
@@ -238,9 +238,9 @@ func TestInsertAt(t *testing.T) {
 
 	t.Run("pos at n-1 delegates to tail", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2) // n=2, n-1=1
-		dl.InsertAt(99, 1)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2) // n=2, n-1=1
+		dl.InsertAt("", 99, 1)
 
 		if dl.Tail.Val != 99 {
 			t.Fatalf("expected Tail 99, got %d", dl.Tail.Val)
@@ -252,9 +252,9 @@ func TestInsertAt(t *testing.T) {
 
 	t.Run("pos beyond n-1 delegates to tail", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertTail(1)
-		dl.InsertTail(2)
-		dl.InsertAt(99, 100)
+		dl.InsertTail("", 1)
+		dl.InsertTail("", 2)
+		dl.InsertAt("", 99, 100)
 
 		if dl.Tail.Val != 99 {
 			t.Fatalf("expected Tail 99, got %d", dl.Tail.Val)
@@ -264,9 +264,9 @@ func TestInsertAt(t *testing.T) {
 	t.Run("middle insertion forward links", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
-		dl.InsertAt(10, 1) // [1, 10, 2, 3]
+		dl.InsertAt("", 10, 1) // [1, 10, 2, 3]
 
 		expected := []int{1, 10, 2, 3}
 		forward := collectForward(t, dl.Head)
@@ -284,9 +284,9 @@ func TestInsertAt(t *testing.T) {
 	t.Run("middle insertion backward links", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
-		dl.InsertAt(10, 1) // [1, 10, 2, 3], backward: [3, 2, 10, 1]
+		dl.InsertAt("", 10, 1) // [1, 10, 2, 3], backward: [3, 2, 10, 1]
 
 		expected := []int{3, 2, 10, 1}
 		backward := collectBackward(t, dl.Tail)
@@ -304,9 +304,9 @@ func TestInsertAt(t *testing.T) {
 	t.Run("length increments on middle insert", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
-		dl.InsertAt(10, 1)
+		dl.InsertAt("", 10, 1)
 
 		if dl.Len() != 4 {
 			t.Fatalf("expected length 4, got %d", dl.Len())
@@ -328,7 +328,7 @@ func TestFindFunc(t *testing.T) {
 
 	t.Run("single element found", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertHead(42)
+		dl.InsertHead("", 42)
 		v, ok := dl.FindFunc(func(v int) bool { return v == 42 })
 		if !ok {
 			t.Fatal("expected found")
@@ -340,7 +340,7 @@ func TestFindFunc(t *testing.T) {
 
 	t.Run("single element not found", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
-		dl.InsertHead(42)
+		dl.InsertHead("", 42)
 		v, ok := dl.FindFunc(func(v int) bool { return v == 99 })
 		if ok {
 			t.Fatalf("expected not found, got %d", v)
@@ -350,7 +350,7 @@ func TestFindFunc(t *testing.T) {
 	t.Run("found at head", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3, 4, 5} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		v, ok := dl.FindFunc(func(v int) bool { return v == 1 })
 		if !ok {
@@ -364,7 +364,7 @@ func TestFindFunc(t *testing.T) {
 	t.Run("found at tail", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3, 4, 5} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		v, ok := dl.FindFunc(func(v int) bool { return v == 5 })
 		if !ok {
@@ -378,7 +378,7 @@ func TestFindFunc(t *testing.T) {
 	t.Run("found in middle of odd-length list", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3, 4, 5} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		v, ok := dl.FindFunc(func(v int) bool { return v == 3 })
 		if !ok {
@@ -392,7 +392,7 @@ func TestFindFunc(t *testing.T) {
 	t.Run("found in middle of even-length list", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3, 4} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		v, ok := dl.FindFunc(func(v int) bool { return v == 2 })
 		if !ok {
@@ -406,7 +406,7 @@ func TestFindFunc(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3, 4, 5} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		v, ok := dl.FindFunc(func(v int) bool { return v == 99 })
 		if ok {
@@ -420,7 +420,7 @@ func TestFindFunc(t *testing.T) {
 	t.Run("predicate matches multiple elements returns first from head", func(t *testing.T) {
 		dl := NewDoublyLinkedList[int]()
 		for _, v := range []int{1, 2, 3, 4, 5} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		// predicate matches 2 and 4; h reaches 2 before t reaches 4
 		v, ok := dl.FindFunc(func(v int) bool { return v == 2 || v == 4 })
@@ -435,7 +435,7 @@ func TestFindFunc(t *testing.T) {
 	t.Run("works with string type", func(t *testing.T) {
 		dl := NewDoublyLinkedList[string]()
 		for _, v := range []string{"a", "b", "c"} {
-			dl.InsertTail(v)
+			dl.InsertTail("", v)
 		}
 		v, ok := dl.FindFunc(func(v string) bool { return v == "b" })
 		if !ok {

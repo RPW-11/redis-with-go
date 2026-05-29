@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net"
 
-	ds "github.com/RPW-11/redis-with-go/internal/data_structures"
+	"github.com/RPW-11/redis-with-go/internal/lru"
 	"github.com/RPW-11/redis-with-go/internal/resp"
 )
 
@@ -31,7 +31,7 @@ type Request struct {
 	payload []byte
 }
 
-func Handle(conn net.Conn, m *ds.RedisMap) {
+func Handle(conn net.Conn, m *lru.LRUEngine) {
 	rd := bufio.NewReader(conn)
 	v, err := resp.Parse(rd)
 	if err != nil {
@@ -101,7 +101,7 @@ func Handle(conn net.Conn, m *ds.RedisMap) {
 	conn.Write(errBytes)
 }
 
-func handleSetCmd(arr []*resp.Value, m *ds.RedisMap) error {
+func handleSetCmd(arr []*resp.Value, m *lru.LRUEngine) error {
 	if len(arr) != 3 {
 		return fmt.Errorf("invalid set command")
 	}
@@ -119,7 +119,7 @@ func handleSetCmd(arr []*resp.Value, m *ds.RedisMap) error {
 	return nil
 }
 
-func handleGetCmd(arr []*resp.Value, m *ds.RedisMap) ([]byte, error) {
+func handleGetCmd(arr []*resp.Value, m *lru.LRUEngine) ([]byte, error) {
 	if len(arr) != 2 {
 		return nil, fmt.Errorf("invalid get command")
 	}
@@ -134,7 +134,7 @@ func handleGetCmd(arr []*resp.Value, m *ds.RedisMap) ([]byte, error) {
 	return v, nil
 }
 
-func handleDelCmd(arr []*resp.Value, m *ds.RedisMap) error {
+func handleDelCmd(arr []*resp.Value, m *lru.LRUEngine) error {
 	if len(arr) != 2 {
 		return fmt.Errorf("invalid del command")
 	}

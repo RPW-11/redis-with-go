@@ -3,9 +3,18 @@ package command
 import (
 	"testing"
 
-	ds "github.com/RPW-11/redis-with-go/internal/data_structures"
+	"github.com/RPW-11/redis-with-go/internal/lru"
 	"github.com/RPW-11/redis-with-go/internal/resp"
 )
+
+func newTestEngine(t *testing.T) *lru.LRUEngine {
+	t.Helper()
+	m, err := lru.NewLRUEngine(100)
+	if err != nil {
+		t.Fatalf("failed to create LRUEngine: %v", err)
+	}
+	return m
+}
 
 func bulkVal(s string) *resp.Value {
 	return &resp.Value{
@@ -25,7 +34,7 @@ func cmdArr(cmd string, args ...string) []*resp.Value {
 
 func TestHandleSetCmd(t *testing.T) {
 	t.Run("set key and value", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		err := handleSetCmd(cmdArr("SET", "hello", "world"), m)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -40,7 +49,7 @@ func TestHandleSetCmd(t *testing.T) {
 	})
 
 	t.Run("overwrites existing key", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		m.Set("hello", []byte("old"))
 		err := handleSetCmd(cmdArr("SET", "hello", "new"), m)
 		if err != nil {
@@ -54,7 +63,7 @@ func TestHandleSetCmd(t *testing.T) {
 
 	// Redis allows SET key "" — an empty value is valid
 	t.Run("empty value is valid per Redis spec", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		err := handleSetCmd(cmdArr("SET", "k", ""), m)
 		if err != nil {
 			t.Fatalf("empty value should be allowed, got error: %v", err)
@@ -69,7 +78,7 @@ func TestHandleSetCmd(t *testing.T) {
 	})
 
 	t.Run("too few arguments", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		err := handleSetCmd(cmdArr("SET", "hello"), m)
 		if err == nil {
 			t.Fatal("expected error for missing value argument")
@@ -77,7 +86,7 @@ func TestHandleSetCmd(t *testing.T) {
 	})
 
 	t.Run("too many arguments", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		err := handleSetCmd(cmdArr("SET", "hello", "world", "extra"), m)
 		if err == nil {
 			t.Fatal("expected error for extra argument")
@@ -85,7 +94,7 @@ func TestHandleSetCmd(t *testing.T) {
 	})
 
 	t.Run("empty key", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		err := handleSetCmd(cmdArr("SET", "", "world"), m)
 		if err == nil {
 			t.Fatal("expected error for empty key")
@@ -93,7 +102,7 @@ func TestHandleSetCmd(t *testing.T) {
 	})
 
 	t.Run("key is not a bulk string", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		arr := []*resp.Value{
 			bulkVal("SET"),
 			{Typ: resp.StringType, Str: "hello"},
@@ -106,7 +115,7 @@ func TestHandleSetCmd(t *testing.T) {
 	})
 
 	t.Run("value is not a bulk string", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		arr := []*resp.Value{
 			bulkVal("SET"),
 			bulkVal("hello"),
@@ -121,7 +130,7 @@ func TestHandleSetCmd(t *testing.T) {
 
 func TestHandleGetCmd(t *testing.T) {
 	t.Run("key exists", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		m.Set("hello", []byte("world"))
 		v, err := handleGetCmd(cmdArr("GET", "hello"), m)
 		if err != nil {
@@ -133,7 +142,7 @@ func TestHandleGetCmd(t *testing.T) {
 	})
 
 	t.Run("key does not exist returns nil", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		v, err := handleGetCmd(cmdArr("GET", "missing"), m)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -144,7 +153,7 @@ func TestHandleGetCmd(t *testing.T) {
 	})
 
 	t.Run("too few arguments", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		_, err := handleGetCmd(cmdArr("GET"), m)
 		if err == nil {
 			t.Fatal("expected error for missing key argument")
@@ -152,7 +161,7 @@ func TestHandleGetCmd(t *testing.T) {
 	})
 
 	t.Run("too many arguments", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		_, err := handleGetCmd(cmdArr("GET", "k1", "k2"), m)
 		if err == nil {
 			t.Fatal("expected error for extra argument")
@@ -160,7 +169,7 @@ func TestHandleGetCmd(t *testing.T) {
 	})
 
 	t.Run("key is not a bulk string", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		arr := []*resp.Value{
 			bulkVal("GET"),
 			{Typ: resp.StringType, Str: "hello"},
@@ -174,7 +183,7 @@ func TestHandleGetCmd(t *testing.T) {
 
 func TestHandleDelCmd(t *testing.T) {
 	t.Run("delete existing key", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		m.Set("hello", []byte("world"))
 		err := handleDelCmd(cmdArr("DEL", "hello"), m)
 		if err != nil {
@@ -187,7 +196,7 @@ func TestHandleDelCmd(t *testing.T) {
 	})
 
 	t.Run("delete non-existing key does not error", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		err := handleDelCmd(cmdArr("DEL", "ghost"), m)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -195,7 +204,7 @@ func TestHandleDelCmd(t *testing.T) {
 	})
 
 	t.Run("too few arguments", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		err := handleDelCmd(cmdArr("DEL"), m)
 		if err == nil {
 			t.Fatal("expected error for missing key argument")
@@ -203,7 +212,7 @@ func TestHandleDelCmd(t *testing.T) {
 	})
 
 	t.Run("too many arguments", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		err := handleDelCmd(cmdArr("DEL", "k1", "k2"), m)
 		if err == nil {
 			t.Fatal("expected error for extra argument")
@@ -211,7 +220,7 @@ func TestHandleDelCmd(t *testing.T) {
 	})
 
 	t.Run("key is not a bulk string", func(t *testing.T) {
-		m := ds.NewRedisMap()
+		m := newTestEngine(t)
 		arr := []*resp.Value{
 			bulkVal("DEL"),
 			{Typ: resp.StringType, Str: "hello"},
