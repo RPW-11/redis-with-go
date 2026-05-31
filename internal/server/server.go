@@ -60,7 +60,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 }
 
 func NewServer(port string, cap int) (*Server, error) {
-	m, err := lru.NewLRUEngine(cap)
+	m, err := lru.NewLRUEngine(cap, ".")
 	if err != nil {
 		return nil, err
 	}

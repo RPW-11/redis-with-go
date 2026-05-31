@@ -10,7 +10,7 @@ import (
 
 func newTestEngine(t *testing.T) *lru.LRUEngine {
 	t.Helper()
-	m, err := lru.NewLRUEngine(100)
+	m, err := lru.NewLRUEngine(100, "")
 	if err != nil {
 		t.Fatalf("failed to create LRUEngine: %v", err)
 	}

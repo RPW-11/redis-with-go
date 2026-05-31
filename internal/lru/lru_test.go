@@ -9,7 +9,7 @@ import (
 
 func newEngine(t *testing.T, cap int) *LRUEngine {
 	t.Helper()
-	e, err := NewLRUEngine(cap)
+	e, err := NewLRUEngine(cap, "")
 	if err != nil {
 		t.Fatalf("NewLRUEngine(%d): %v", cap, err)
 	}
@@ -20,35 +20,35 @@ func newEngine(t *testing.T, cap int) *LRUEngine {
 
 func TestNewLRUEngine(t *testing.T) {
 	t.Run("valid capacity", func(t *testing.T) {
-		e, err := NewLRUEngine(10)
+		e, err := NewLRUEngine(10, "")
 		if err != nil || e == nil {
 			t.Fatalf("expected valid engine, got err=%v", err)
 		}
 	})
 
 	t.Run("zero capacity rejected", func(t *testing.T) {
-		_, err := NewLRUEngine(0)
+		_, err := NewLRUEngine(0, "")
 		if err == nil {
 			t.Fatal("expected error for zero capacity")
 		}
 	})
 
 	t.Run("negative capacity rejected", func(t *testing.T) {
-		_, err := NewLRUEngine(-1)
+		_, err := NewLRUEngine(-1, "")
 		if err == nil {
 			t.Fatal("expected error for negative capacity")
 		}
 	})
 
 	t.Run("exceeds MaxCapacity rejected", func(t *testing.T) {
-		_, err := NewLRUEngine(MaxCapacity + 1)
+		_, err := NewLRUEngine(MaxCapacity+1, "")
 		if err == nil {
 			t.Fatal("expected error for capacity exceeding MaxCapacity")
 		}
 	})
 
 	t.Run("MaxCapacity accepted", func(t *testing.T) {
-		_, err := NewLRUEngine(MaxCapacity)
+		_, err := NewLRUEngine(MaxCapacity, "")
 		if err != nil {
 			t.Fatalf("expected MaxCapacity to be valid, got: %v", err)
 		}

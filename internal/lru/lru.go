@@ -2,6 +2,8 @@ package lru
 
 import (
 	"fmt"
+	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 
@@ -22,19 +24,31 @@ type LRUEngine struct {
 	mu  sync.Mutex
 	m   map[string]*ds.DLNode[Data]
 	dl  *ds.DoublyLinkedList[Data]
+	aof *AofLogger
 }
 
-func NewLRUEngine(cap int) (*LRUEngine, error) {
+func NewLRUEngine(cap int, aofDir string) (*LRUEngine, error) {
 	if cap <= 0 {
 		return nil, fmt.Errorf("capacity must be greater than 0")
 	}
 	if cap > MaxCapacity {
 		return nil, fmt.Errorf("capacity %d exceeds maximum allowed %d", cap, MaxCapacity)
 	}
+
+	var aof *AofLogger
+	if aofDir != "" {
+		var err error
+		aof, err = NewAofLogger(aofDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create aof logger: %w", err)
+		}
+	}
+
 	return &LRUEngine{
 		cap: cap,
 		m:   make(map[string]*ds.DLNode[Data]),
 		dl:  ds.NewDoublyLinkedList[Data](),
+		aof: aof,
 	}, nil
 }
 
@@ -49,6 +63,12 @@ func (lru *LRUEngine) Delete(k string) {
 
 	delete(lru.m, k)
 	lru.l--
+
+	if lru.aof != nil {
+		if err := lru.aof.LogDelete(k, nil); err != nil {
+			slog.Error("aof log delete failed", "err", err)
+		}
+	}
 
 	if node == lru.dl.Head {
 		lru.dl.RemoveHead()
@@ -106,6 +126,11 @@ func (lru *LRUEngine) Set(k string, v []byte) {
 	if node, ok := lru.m[k]; ok {
 		node.Val.Bytes = cpy
 		lru.dl.MoveToHead(node)
+		if lru.aof != nil {
+			if err := lru.aof.LogSet(k, cpy); err != nil {
+				slog.Error("aof log set failed", "err", err)
+			}
+		}
 		return
 	}
 
@@ -127,6 +152,12 @@ func (lru *LRUEngine) Set(k string, v []byte) {
 	lru.dl.InsertHead(data)
 	lru.l++
 	lru.m[k] = lru.dl.Head
+
+	if lru.aof != nil {
+		if err := lru.aof.LogSet(k, cpy); err != nil {
+			slog.Error("aof log set failed", "err", err)
+		}
+	}
 }
 
 func (lru *LRUEngine) ExpiryOf(k string) (time.Time, bool) {
@@ -150,6 +181,13 @@ func (lru *LRUEngine) SetExpiry(k string, t time.Time) bool {
 	}
 
 	node.Val.Expiry = t // value by reference
+
+	if lru.aof != nil {
+		sec := []byte(strconv.FormatInt(int64(time.Until(t).Seconds()), 10))
+		if err := lru.aof.LogExpire(k, sec); err != nil {
+			slog.Error("aof log expire failed", "err", err)
+		}
+	}
 
 	return true
 }
