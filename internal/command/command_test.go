@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/RPW-11/redis-with-go/internal/lru"
+	"github.com/RPW-11/redis-with-go/internal/store"
 	"github.com/RPW-11/redis-with-go/internal/resp"
 )
 
-func newTestEngine(t *testing.T) *lru.LRUEngine {
+func newTestEngine(t *testing.T) *store.Store {
 	t.Helper()
-	m, err := lru.NewLRUEngine(100, "")
+	m, err := store.NewStore(100, "")
 	if err != nil {
 		t.Fatalf("failed to create LRUEngine: %v", err)
 	}

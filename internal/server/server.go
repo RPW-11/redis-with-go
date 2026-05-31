@@ -7,12 +7,12 @@ import (
 	"net"
 
 	"github.com/RPW-11/redis-with-go/internal/command"
-	"github.com/RPW-11/redis-with-go/internal/lru"
+	"github.com/RPW-11/redis-with-go/internal/store"
 )
 
 type Server struct {
 	Port string
-	m    *lru.LRUEngine
+	m    *store.Store
 }
 
 func (s *Server) Run() error {
@@ -60,7 +60,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 }
 
 func NewServer(port string, cap int) (*Server, error) {
-	m, err := lru.NewLRUEngine(cap, ".")
+	m, err := store.NewStore(cap, ".")
 	if err != nil {
 		return nil, err
 	}

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/RPW-11/redis-with-go/internal/lru"
+	"github.com/RPW-11/redis-with-go/internal/store"
 	"github.com/RPW-11/redis-with-go/internal/resp"
 )
 
@@ -32,7 +32,7 @@ type Request struct {
 	payload []byte
 }
 
-func Handle(conn net.Conn, lru *lru.LRUEngine) {
+func Handle(conn net.Conn, lru *store.Store) {
 	rd := bufio.NewReader(conn)
 	v, err := resp.Parse(rd)
 	if err != nil {
@@ -121,7 +121,7 @@ func Handle(conn net.Conn, lru *lru.LRUEngine) {
 	conn.Write(errBytes)
 }
 
-func handleSetCmd(arr []*resp.Value, lru *lru.LRUEngine) error {
+func handleSetCmd(arr []*resp.Value, lru *store.Store) error {
 	if len(arr) != 3 {
 		return fmt.Errorf("invalid set command")
 	}
@@ -139,7 +139,7 @@ func handleSetCmd(arr []*resp.Value, lru *lru.LRUEngine) error {
 	return nil
 }
 
-func handleGetCmd(arr []*resp.Value, lru *lru.LRUEngine) ([]byte, error) {
+func handleGetCmd(arr []*resp.Value, lru *store.Store) ([]byte, error) {
 	if len(arr) != 2 {
 		return nil, fmt.Errorf("invalid get command")
 	}
@@ -154,7 +154,7 @@ func handleGetCmd(arr []*resp.Value, lru *lru.LRUEngine) ([]byte, error) {
 	return v, nil
 }
 
-func handleDelCmd(arr []*resp.Value, lru *lru.LRUEngine) error {
+func handleDelCmd(arr []*resp.Value, lru *store.Store) error {
 	if len(arr) != 2 {
 		return fmt.Errorf("invalid del command")
 	}
@@ -169,7 +169,7 @@ func handleDelCmd(arr []*resp.Value, lru *lru.LRUEngine) error {
 	return nil
 }
 
-func handleExpireCmd(arr []*resp.Value, lru *lru.LRUEngine) (bool, error) {
+func handleExpireCmd(arr []*resp.Value, lru *store.Store) (bool, error) {
 	if len(arr) != 3 {
 		return false, fmt.Errorf("invalid expire command")
 	}
@@ -199,7 +199,7 @@ func handleExpireCmd(arr []*resp.Value, lru *lru.LRUEngine) (bool, error) {
 	return true, nil
 }
 
-func handleTtlCmd(arr []*resp.Value, lru *lru.LRUEngine) (int, error) {
+func handleTtlCmd(arr []*resp.Value, lru *store.Store) (int, error) {
 	if len(arr) != 2 {
 		return 0, fmt.Errorf("invalid ttl command")
 	}
