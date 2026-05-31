@@ -180,6 +180,32 @@ func TestHandleGetCmd(t *testing.T) {
 			t.Fatal("expected error for non-bulk-string key")
 		}
 	})
+
+	t.Run("expired key returns nil", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		m.SetExpiry("k", time.Now().Add(-1*time.Second))
+		v, err := handleGetCmd(cmdArr("GET", "k"), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v != nil {
+			t.Fatalf("expected nil for expired key, got %q", v)
+		}
+	})
+
+	t.Run("non-expired key returns value", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		m.SetExpiry("k", time.Now().Add(10*time.Second))
+		v, err := handleGetCmd(cmdArr("GET", "k"), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(v) != "v" {
+			t.Fatalf("expected 'v', got %q", v)
+		}
+	})
 }
 
 func TestHandleDelCmd(t *testing.T) {

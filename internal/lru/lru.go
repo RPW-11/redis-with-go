@@ -81,6 +81,14 @@ func (lru *LRUEngine) Get(k string) ([]byte, bool) {
 	}
 
 	lru.dl.MoveToHead(node)
+	if !node.Val.Expiry.IsZero() && time.Now().After(node.Val.Expiry) {
+		// delete
+		lru.dl.RemoveHead()
+		delete(lru.m, node.Val.Key)
+		lru.l--
+
+		return nil, false
+	}
 
 	cpy := make([]byte, len(node.Val.Bytes))
 	copy(cpy, node.Val.Bytes)
