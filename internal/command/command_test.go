@@ -335,3 +335,69 @@ func TestHandleExpireCmd(t *testing.T) {
 		}
 	})
 }
+
+func TestHandleTtlCmd(t *testing.T) {
+	t.Run("returns -2 for missing key", func(t *testing.T) {
+		m := newTestEngine(t)
+		sec, err := handleTtlCmd(cmdArr("TTL", "missing"), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if sec != -2 {
+			t.Fatalf("expected -2 for missing key, got %d", sec)
+		}
+	})
+
+	t.Run("returns -1 for key with no expiry", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		sec, err := handleTtlCmd(cmdArr("TTL", "k"), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if sec != -1 {
+			t.Fatalf("expected -1 for key with no expiry, got %d", sec)
+		}
+	})
+
+	t.Run("returns remaining seconds for key with expiry", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		handleExpireCmd(cmdArr("EXPIRE", "k", "10"), m)
+		sec, err := handleTtlCmd(cmdArr("TTL", "k"), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if sec < 9 || sec > 10 {
+			t.Fatalf("expected TTL ~10, got %d", sec)
+		}
+	})
+
+	t.Run("too few arguments", func(t *testing.T) {
+		m := newTestEngine(t)
+		_, err := handleTtlCmd(cmdArr("TTL"), m)
+		if err == nil {
+			t.Fatal("expected error for missing key argument")
+		}
+	})
+
+	t.Run("too many arguments", func(t *testing.T) {
+		m := newTestEngine(t)
+		_, err := handleTtlCmd(cmdArr("TTL", "k", "extra"), m)
+		if err == nil {
+			t.Fatal("expected error for extra argument")
+		}
+	})
+
+	t.Run("key is not a bulk string", func(t *testing.T) {
+		m := newTestEngine(t)
+		arr := []*resp.Value{
+			bulkVal("TTL"),
+			{Typ: resp.StringType, Str: "k"},
+		}
+		_, err := handleTtlCmd(arr, m)
+		if err == nil {
+			t.Fatal("expected error for non-bulk-string key")
+		}
+	})
+}

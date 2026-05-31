@@ -105,7 +105,15 @@ func Handle(conn net.Conn, lru *lru.LRUEngine) {
 		conn.Write(res)
 		return
 	case Ttl:
-		handleTtlCmd()
+		sec, err := handleTtlCmd(v.Arr, lru)
+		if err != nil {
+			errBytes, _ := resp.Serialize(resp.NewError(err))
+			conn.Write(errBytes)
+			return
+		}
+
+		res, _ := resp.Serialize(resp.NewInteger(sec))
+		conn.Write(res)
 		return
 	}
 
@@ -191,6 +199,22 @@ func handleExpireCmd(arr []*resp.Value, lru *lru.LRUEngine) (bool, error) {
 	return true, nil
 }
 
-func handleTtlCmd() {
+func handleTtlCmd(arr []*resp.Value, lru *lru.LRUEngine) (int, error) {
+	if len(arr) != 2 {
+		return 0, fmt.Errorf("invalid ttl command")
+	}
+	if arr[1].Typ != resp.BulkStringType {
+		return 0, fmt.Errorf("key must be a bulk string")
+	}
 
+	key := string(arr[1].Bytes)
+	t, ok := lru.ExpiryOf(key)
+	if !ok {
+		return -2, nil // indicates the key does not exist
+	}
+	if t.IsZero() {
+		return -1, nil
+	}
+
+	return int(time.Until(t).Seconds()), nil
 }
