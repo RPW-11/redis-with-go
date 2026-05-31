@@ -2,6 +2,7 @@ package command
 
 import (
 	"testing"
+	"time"
 
 	"github.com/RPW-11/redis-with-go/internal/lru"
 	"github.com/RPW-11/redis-with-go/internal/resp"
@@ -228,6 +229,109 @@ func TestHandleDelCmd(t *testing.T) {
 		err := handleDelCmd(arr, m)
 		if err == nil {
 			t.Fatal("expected error for non-bulk-string key")
+		}
+	})
+}
+
+func TestHandleExpireCmd(t *testing.T) {
+	t.Run("sets expiry on existing key", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		before := time.Now()
+		ok, err := handleExpireCmd(cmdArr("EXPIRE", "k", "10"), m)
+		after := time.Now()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !ok {
+			t.Fatal("expected true for existing key")
+		}
+		expiry, _ := m.ExpiryOf("k")
+		if expiry.Before(before.Add(10*time.Second)) || expiry.After(after.Add(10*time.Second)) {
+			t.Fatalf("expiry %v out of expected range", expiry)
+		}
+	})
+
+	t.Run("returns false for missing key", func(t *testing.T) {
+		m := newTestEngine(t)
+		ok, err := handleExpireCmd(cmdArr("EXPIRE", "missing", "10"), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if ok {
+			t.Fatal("expected false for missing key")
+		}
+	})
+
+	t.Run("zero seconds is valid", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		ok, err := handleExpireCmd(cmdArr("EXPIRE", "k", "0"), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !ok {
+			t.Fatal("expected true for existing key")
+		}
+	})
+
+	t.Run("negative seconds rejected", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		_, err := handleExpireCmd(cmdArr("EXPIRE", "k", "-1"), m)
+		if err == nil {
+			t.Fatal("expected error for negative seconds")
+		}
+	})
+
+	t.Run("non-integer seconds rejected", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		_, err := handleExpireCmd(cmdArr("EXPIRE", "k", "abc"), m)
+		if err == nil {
+			t.Fatal("expected error for non-integer seconds")
+		}
+	})
+
+	t.Run("too few arguments", func(t *testing.T) {
+		m := newTestEngine(t)
+		_, err := handleExpireCmd(cmdArr("EXPIRE", "k"), m)
+		if err == nil {
+			t.Fatal("expected error for missing seconds argument")
+		}
+	})
+
+	t.Run("too many arguments", func(t *testing.T) {
+		m := newTestEngine(t)
+		_, err := handleExpireCmd(cmdArr("EXPIRE", "k", "10", "extra"), m)
+		if err == nil {
+			t.Fatal("expected error for extra argument")
+		}
+	})
+
+	t.Run("key is not a bulk string", func(t *testing.T) {
+		m := newTestEngine(t)
+		arr := []*resp.Value{
+			bulkVal("EXPIRE"),
+			{Typ: resp.StringType, Str: "k"},
+			bulkVal("10"),
+		}
+		_, err := handleExpireCmd(arr, m)
+		if err == nil {
+			t.Fatal("expected error for non-bulk-string key")
+		}
+	})
+
+	t.Run("seconds is not a bulk string", func(t *testing.T) {
+		m := newTestEngine(t)
+		arr := []*resp.Value{
+			bulkVal("EXPIRE"),
+			bulkVal("k"),
+			{Typ: resp.StringType, Str: "10"},
+		}
+		_, err := handleExpireCmd(arr, m)
+		if err == nil {
+			t.Fatal("expected error for non-bulk-string seconds")
 		}
 	})
 }

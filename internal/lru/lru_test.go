@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 )
 
 func newEngine(t *testing.T, cap int) *LRUEngine {
@@ -50,6 +51,120 @@ func TestNewLRUEngine(t *testing.T) {
 		_, err := NewLRUEngine(MaxCapacity)
 		if err != nil {
 			t.Fatalf("expected MaxCapacity to be valid, got: %v", err)
+		}
+	})
+}
+
+// --- Exist ---
+
+func TestExist(t *testing.T) {
+	t.Run("returns true for existing key", func(t *testing.T) {
+		e := newEngine(t, 10)
+		e.Set("k", []byte("v"))
+		if !e.Exist("k") {
+			t.Fatal("expected true for existing key")
+		}
+	})
+
+	t.Run("returns false for missing key", func(t *testing.T) {
+		e := newEngine(t, 10)
+		if e.Exist("missing") {
+			t.Fatal("expected false for missing key")
+		}
+	})
+
+	t.Run("returns false after delete", func(t *testing.T) {
+		e := newEngine(t, 10)
+		e.Set("k", []byte("v"))
+		e.Delete("k")
+		if e.Exist("k") {
+			t.Fatal("expected false after delete")
+		}
+	})
+
+	t.Run("returns false after eviction", func(t *testing.T) {
+		e := newEngine(t, 1)
+		e.Set("a", []byte("1"))
+		e.Set("b", []byte("2")) // evicts a
+		if e.Exist("a") {
+			t.Fatal("expected false for evicted key")
+		}
+		if !e.Exist("b") {
+			t.Fatal("expected true for current key")
+		}
+	})
+
+	t.Run("does not promote to head", func(t *testing.T) {
+		e := newEngine(t, 3)
+		e.Set("a", []byte("1"))
+		e.Set("b", []byte("2"))
+		e.Set("c", []byte("3")) // head=c, tail=a
+		e.Exist("a")            // should NOT move 'a' to head
+		e.Set("d", []byte("4")) // should evict 'a' (still LRU)
+		if e.Exist("a") {
+			t.Fatal("expected 'a' to be evicted; Exist must not promote LRU order")
+		}
+	})
+}
+
+// --- SetExpiry ---
+
+func TestSetExpiry(t *testing.T) {
+	t.Run("returns true for existing key", func(t *testing.T) {
+		e := newEngine(t, 10)
+		e.Set("k", []byte("v"))
+		if !e.SetExpiry("k", time.Now().Add(10*time.Second)) {
+			t.Fatal("expected true for existing key")
+		}
+	})
+
+	t.Run("returns false for missing key", func(t *testing.T) {
+		e := newEngine(t, 10)
+		if e.SetExpiry("missing", time.Now().Add(10*time.Second)) {
+			t.Fatal("expected false for missing key")
+		}
+	})
+
+	t.Run("expiry is stored on node", func(t *testing.T) {
+		e := newEngine(t, 10)
+		e.Set("k", []byte("v"))
+		expiry := time.Now().Add(10 * time.Second).Truncate(time.Second)
+		e.SetExpiry("k", expiry)
+		if got := e.m["k"].Val.Expiry; !got.Equal(expiry) {
+			t.Fatalf("expected expiry %v, got %v", expiry, got)
+		}
+	})
+
+	t.Run("overwrites previous expiry", func(t *testing.T) {
+		e := newEngine(t, 10)
+		e.Set("k", []byte("v"))
+		first := time.Now().Add(5 * time.Second)
+		second := time.Now().Add(60 * time.Second)
+		e.SetExpiry("k", first)
+		e.SetExpiry("k", second)
+		if got := e.m["k"].Val.Expiry; !got.Equal(second) {
+			t.Fatalf("expected updated expiry %v, got %v", second, got)
+		}
+	})
+
+	t.Run("does not promote LRU order", func(t *testing.T) {
+		e := newEngine(t, 3)
+		e.Set("a", []byte("1"))
+		e.Set("b", []byte("2"))
+		e.Set("c", []byte("3")) // head=c, tail=a
+		e.SetExpiry("a", time.Now().Add(10*time.Second))
+		e.Set("d", []byte("4")) // should evict 'a' (still LRU)
+		if e.Exist("a") {
+			t.Fatal("expected 'a' to be evicted; SetExpiry must not promote LRU order")
+		}
+	})
+
+	t.Run("returns false after key is deleted", func(t *testing.T) {
+		e := newEngine(t, 10)
+		e.Set("k", []byte("v"))
+		e.Delete("k")
+		if e.SetExpiry("k", time.Now().Add(10*time.Second)) {
+			t.Fatal("expected false after key is deleted")
 		}
 	})
 }

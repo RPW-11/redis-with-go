@@ -3,18 +3,25 @@ package lru
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	ds "github.com/RPW-11/redis-with-go/internal/data_structures"
 )
 
 const MaxCapacity = 10_000_000
 
+type Data struct {
+	Key    string
+	Bytes  []byte
+	Expiry time.Time
+}
+
 type LRUEngine struct {
 	cap int
 	l   int
-	mu  sync.RWMutex
-	m   map[string]*ds.DLNode[[]byte]
-	dl  *ds.DoublyLinkedList[[]byte]
+	mu  sync.Mutex
+	m   map[string]*ds.DLNode[Data]
+	dl  *ds.DoublyLinkedList[Data]
 }
 
 func NewLRUEngine(cap int) (*LRUEngine, error) {
@@ -26,8 +33,8 @@ func NewLRUEngine(cap int) (*LRUEngine, error) {
 	}
 	return &LRUEngine{
 		cap: cap,
-		m:   make(map[string]*ds.DLNode[[]byte]),
-		dl:  ds.NewDoublyLinkedList[[]byte](),
+		m:   make(map[string]*ds.DLNode[Data]),
+		dl:  ds.NewDoublyLinkedList[Data](),
 	}, nil
 }
 
@@ -56,6 +63,14 @@ func (lru *LRUEngine) Delete(k string) {
 	node.Next.Prev = node.Prev
 }
 
+func (lru *LRUEngine) Exist(k string) bool {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
+
+	_, ok := lru.m[k]
+	return ok
+}
+
 func (lru *LRUEngine) Get(k string) ([]byte, bool) {
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
@@ -67,10 +82,9 @@ func (lru *LRUEngine) Get(k string) ([]byte, bool) {
 
 	lru.dl.MoveToHead(node)
 
-	cpy := make([]byte, len(node.Val))
-	copy(cpy, node.Val)
+	cpy := make([]byte, len(node.Val.Bytes))
+	copy(cpy, node.Val.Bytes)
 	return cpy, true
-
 }
 
 func (lru *LRUEngine) Set(k string, v []byte) {
@@ -82,7 +96,7 @@ func (lru *LRUEngine) Set(k string, v []byte) {
 
 	// check if the key exist. If it does, update the value. Else, insert to the head
 	if node, ok := lru.m[k]; ok {
-		node.Val = cpy
+		node.Val.Bytes = cpy
 		lru.dl.MoveToHead(node)
 		return
 	}
@@ -94,11 +108,40 @@ func (lru *LRUEngine) Set(k string, v []byte) {
 			return
 		}
 
-		delete(lru.m, node.Id)
+		delete(lru.m, node.Val.Key)
 		lru.l--
 	}
 
-	lru.dl.InsertHead(k, cpy)
+	data := Data{
+		Key:   k,
+		Bytes: cpy,
+	}
+	lru.dl.InsertHead(data)
 	lru.l++
 	lru.m[k] = lru.dl.Head
+}
+
+func (lru *LRUEngine) ExpiryOf(k string) (time.Time, bool) {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
+
+	node, ok := lru.m[k]
+	if !ok {
+		return time.Time{}, false
+	}
+	return node.Val.Expiry, true
+}
+
+func (lru *LRUEngine) SetExpiry(k string, t time.Time) bool {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
+
+	node, ok := lru.m[k]
+	if !ok {
+		return false
+	}
+
+	node.Val.Expiry = t // value by reference
+
+	return true
 }

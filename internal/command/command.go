@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
+	"time"
 
 	"github.com/RPW-11/redis-with-go/internal/lru"
 	"github.com/RPW-11/redis-with-go/internal/resp"
 )
-
 
 type Command string
 
@@ -17,7 +18,7 @@ const (
 	Set    Command = "SET"
 	Get    Command = "GET"
 	Del    Command = "DEL"
-	Expire Command = "Expire"
+	Expire Command = "EXPIRE"
 	Ttl    Command = "TTL"
 )
 
@@ -31,7 +32,7 @@ type Request struct {
 	payload []byte
 }
 
-func Handle(conn net.Conn, m *lru.LRUEngine) {
+func Handle(conn net.Conn, lru *lru.LRUEngine) {
 	rd := bufio.NewReader(conn)
 	v, err := resp.Parse(rd)
 	if err != nil {
@@ -54,7 +55,7 @@ func Handle(conn net.Conn, m *lru.LRUEngine) {
 
 	switch Command(cmd) {
 	case Set:
-		err = handleSetCmd(v.Arr, m)
+		err = handleSetCmd(v.Arr, lru)
 		if err != nil {
 			errBytes, _ := resp.Serialize(resp.NewError(err))
 			conn.Write(errBytes)
@@ -64,7 +65,7 @@ func Handle(conn net.Conn, m *lru.LRUEngine) {
 		conn.Write(res)
 		return
 	case Get:
-		v, err := handleGetCmd(v.Arr, m)
+		v, err := handleGetCmd(v.Arr, lru)
 		if err != nil {
 			errBytes, _ := resp.Serialize(resp.NewError(err))
 			conn.Write(errBytes)
@@ -80,7 +81,7 @@ func Handle(conn net.Conn, m *lru.LRUEngine) {
 		conn.Write(data)
 		return
 	case Del:
-		err = handleDelCmd(v.Arr, m)
+		err = handleDelCmd(v.Arr, lru)
 		if err != nil {
 			errBytes, _ := resp.Serialize(resp.NewError(err))
 			conn.Write(errBytes)
@@ -90,7 +91,18 @@ func Handle(conn net.Conn, m *lru.LRUEngine) {
 		conn.Write(res)
 		return
 	case Expire:
-		handleExpireCmd()
+		ok, err := handleExpireCmd(v.Arr, lru)
+		if err != nil {
+			errBytes, _ := resp.Serialize(resp.NewError(err))
+			conn.Write(errBytes)
+			return
+		}
+		val := 0
+		if ok {
+			val = 1
+		}
+		res, _ := resp.Serialize(resp.NewInteger(val))
+		conn.Write(res)
 		return
 	case Ttl:
 		handleTtlCmd()
@@ -101,7 +113,7 @@ func Handle(conn net.Conn, m *lru.LRUEngine) {
 	conn.Write(errBytes)
 }
 
-func handleSetCmd(arr []*resp.Value, m *lru.LRUEngine) error {
+func handleSetCmd(arr []*resp.Value, lru *lru.LRUEngine) error {
 	if len(arr) != 3 {
 		return fmt.Errorf("invalid set command")
 	}
@@ -114,12 +126,12 @@ func handleSetCmd(arr []*resp.Value, m *lru.LRUEngine) error {
 		return fmt.Errorf("key cannot be empty")
 	}
 
-	m.Set(string(key.Bytes), val.Bytes)
+	lru.Set(string(key.Bytes), val.Bytes)
 
 	return nil
 }
 
-func handleGetCmd(arr []*resp.Value, m *lru.LRUEngine) ([]byte, error) {
+func handleGetCmd(arr []*resp.Value, lru *lru.LRUEngine) ([]byte, error) {
 	if len(arr) != 2 {
 		return nil, fmt.Errorf("invalid get command")
 	}
@@ -129,12 +141,12 @@ func handleGetCmd(arr []*resp.Value, m *lru.LRUEngine) ([]byte, error) {
 
 	key := string(arr[1].Bytes)
 
-	v, _ := m.Get(key)
+	v, _ := lru.Get(key)
 
 	return v, nil
 }
 
-func handleDelCmd(arr []*resp.Value, m *lru.LRUEngine) error {
+func handleDelCmd(arr []*resp.Value, lru *lru.LRUEngine) error {
 	if len(arr) != 2 {
 		return fmt.Errorf("invalid del command")
 	}
@@ -144,13 +156,39 @@ func handleDelCmd(arr []*resp.Value, m *lru.LRUEngine) error {
 
 	key := string(arr[1].Bytes)
 
-	m.Delete(key)
+	lru.Delete(key)
 
 	return nil
 }
 
-func handleExpireCmd() {
+func handleExpireCmd(arr []*resp.Value, lru *lru.LRUEngine) (bool, error) {
+	if len(arr) != 3 {
+		return false, fmt.Errorf("invalid expire command")
+	}
+	if arr[1].Typ != resp.BulkStringType {
+		return false, fmt.Errorf("key must be a bulk string")
+	}
+	if arr[2].Typ != resp.BulkStringType {
+		return false, fmt.Errorf("key must be a bulk string")
+	}
 
+	key := string(arr[1].Bytes)
+	sec, err := strconv.Atoi(string(arr[2].Bytes))
+	if err != nil {
+		return false, err
+	}
+	if sec < 0 {
+		return false, fmt.Errorf("invalid expire time in 'expire' command")
+	}
+
+	t := time.Now().Add(time.Duration(sec) * time.Second)
+	ok := lru.SetExpiry(key, t)
+
+	if !ok {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func handleTtlCmd() {

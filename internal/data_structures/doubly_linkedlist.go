@@ -2,7 +2,6 @@ package datastructures
 
 // DLNode is a node in a doubly linked list. Id mirrors the map key for O(1) map deletion.
 type DLNode[T any] struct {
-	Id   string
 	Val  T
 	Prev *DLNode[T]
 	Next *DLNode[T]
@@ -21,10 +20,9 @@ func (dl *DoublyLinkedList[T]) Len() int {
 }
 
 // InsertHead inserts a new node at the front of the list.
-func (dl *DoublyLinkedList[T]) InsertHead(id string, v T) {
+func (dl *DoublyLinkedList[T]) InsertHead(v T) {
 	dl.n++
 	node := &DLNode[T]{
-		Id:  id,
 		Val: v,
 	}
 
@@ -40,10 +38,9 @@ func (dl *DoublyLinkedList[T]) InsertHead(id string, v T) {
 }
 
 // InsertTail inserts a new node at the back of the list.
-func (dl *DoublyLinkedList[T]) InsertTail(id string, v T) {
+func (dl *DoublyLinkedList[T]) InsertTail(v T) {
 	dl.n++
 	node := &DLNode[T]{
-		Id:  id,
 		Val: v,
 	}
 
@@ -59,20 +56,19 @@ func (dl *DoublyLinkedList[T]) InsertTail(id string, v T) {
 }
 
 // InsertAt inserts a new node at position pos (0-indexed). Clamps to head/tail if out of range.
-func (dl *DoublyLinkedList[T]) InsertAt(id string, v T, pos int) {
+func (dl *DoublyLinkedList[T]) InsertAt(v T, pos int) {
 	if pos <= 0 {
-		dl.InsertHead(id, v)
+		dl.InsertHead(v)
 		return
 	}
 
 	if pos >= dl.n-1 {
-		dl.InsertTail(id, v)
+		dl.InsertTail(v)
 		return
 	}
 
 	dl.n++
 	node := &DLNode[T]{
-		Id:  id,
 		Val: v,
 	}
 
