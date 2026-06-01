@@ -2,14 +2,15 @@ package command
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"time"
 
-	"github.com/RPW-11/redis-with-go/internal/store"
 	"github.com/RPW-11/redis-with-go/internal/resp"
+	"github.com/RPW-11/redis-with-go/internal/store"
 )
 
 type Command string
@@ -32,23 +33,30 @@ type Request struct {
 	payload []byte
 }
 
-func Handle(conn net.Conn, lru *store.Store) {
+func Handle(ctx context.Context, conn net.Conn, lru *store.Store) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	rd := bufio.NewReader(conn)
 	v, err := resp.Parse(rd)
 	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		errBytes, _ := resp.Serialize(resp.NewError(err))
 		conn.Write(errBytes)
-		return
+		return err
 	}
 	if v.Typ != resp.ArrayType {
 		errBytes, _ := resp.Serialize(resp.NewError(errors.New("command must be in array type")))
 		conn.Write(errBytes)
-		return
+		return nil
 	}
 	if len(v.Arr) == 0 {
 		errBytes, _ := resp.Serialize(resp.NewError(errors.New("empty payload")))
 		conn.Write(errBytes)
-		return
+		return nil
 	}
 
 	cmd := v.Arr[0].Bytes
@@ -59,43 +67,42 @@ func Handle(conn net.Conn, lru *store.Store) {
 		if err != nil {
 			errBytes, _ := resp.Serialize(resp.NewError(err))
 			conn.Write(errBytes)
-			return
+			return nil
 		}
 		res, _ := resp.Serialize(resp.NewString("OK"))
 		conn.Write(res)
-		return
+		return nil
 	case Get:
 		v, err := handleGetCmd(v.Arr, lru)
 		if err != nil {
 			errBytes, _ := resp.Serialize(resp.NewError(err))
 			conn.Write(errBytes)
-			return
+			return nil
 		}
 		if v == nil {
 			nilBytes, _ := resp.Serialize(resp.NewNull())
 			conn.Write(nilBytes)
-			return
+			return nil
 		}
-
 		data, _ := resp.Serialize(resp.NewBulkString(v))
 		conn.Write(data)
-		return
+		return nil
 	case Del:
 		err = handleDelCmd(v.Arr, lru)
 		if err != nil {
 			errBytes, _ := resp.Serialize(resp.NewError(err))
 			conn.Write(errBytes)
-			return
+			return nil
 		}
 		res, _ := resp.Serialize(resp.NewString("OK"))
 		conn.Write(res)
-		return
+		return nil
 	case Expire:
 		ok, err := handleExpireCmd(v.Arr, lru)
 		if err != nil {
 			errBytes, _ := resp.Serialize(resp.NewError(err))
 			conn.Write(errBytes)
-			return
+			return nil
 		}
 		val := 0
 		if ok {
@@ -103,22 +110,22 @@ func Handle(conn net.Conn, lru *store.Store) {
 		}
 		res, _ := resp.Serialize(resp.NewInteger(val))
 		conn.Write(res)
-		return
+		return nil
 	case Ttl:
 		sec, err := handleTtlCmd(v.Arr, lru)
 		if err != nil {
 			errBytes, _ := resp.Serialize(resp.NewError(err))
 			conn.Write(errBytes)
-			return
+			return nil
 		}
-
 		res, _ := resp.Serialize(resp.NewInteger(sec))
 		conn.Write(res)
-		return
+		return nil
 	}
 
 	errBytes, _ := resp.Serialize(resp.NewError(errors.New("command is invalid")))
 	conn.Write(errBytes)
+	return nil
 }
 
 func handleSetCmd(arr []*resp.Value, lru *store.Store) error {
