@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -360,6 +361,127 @@ func TestHandleExpireCmd(t *testing.T) {
 		_, err := handleExpireCmd(arr, m)
 		if err == nil {
 			t.Fatal("expected error for non-bulk-string seconds")
+		}
+	})
+}
+
+func unixStr(t time.Time) string {
+	return strconv.FormatInt(t.Unix(), 10)
+}
+
+func TestHandleExpireAtCmd(t *testing.T) {
+	t.Run("sets expiry on existing key", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		expireAt := time.Now().Add(10 * time.Second)
+		ok, err := handleExpireAtCmd(cmdArr("EXPIREAT", "k", unixStr(expireAt)), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !ok {
+			t.Fatal("expected true for existing key")
+		}
+		expiry, _ := m.ExpiryOf("k")
+		if expiry.Unix() != expireAt.Unix() {
+			t.Fatalf("expected expiry %v, got %v", expireAt.Unix(), expiry.Unix())
+		}
+	})
+
+	t.Run("returns false for missing key", func(t *testing.T) {
+		m := newTestEngine(t)
+		ok, err := handleExpireAtCmd(cmdArr("EXPIREAT", "missing", unixStr(time.Now().Add(10*time.Second))), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if ok {
+			t.Fatal("expected false for missing key")
+		}
+	})
+
+	t.Run("past timestamp deletes existing key", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		ok, err := handleExpireAtCmd(cmdArr("EXPIREAT", "k", unixStr(time.Now().Add(-1*time.Second))), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !ok {
+			t.Fatal("expected true for existing key with past timestamp")
+		}
+		_, exists := m.Get("k")
+		if exists {
+			t.Fatal("expected key to be deleted after past timestamp")
+		}
+	})
+
+	t.Run("past timestamp returns false for missing key", func(t *testing.T) {
+		m := newTestEngine(t)
+		ok, err := handleExpireAtCmd(cmdArr("EXPIREAT", "missing", unixStr(time.Now().Add(-1*time.Second))), m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if ok {
+			t.Fatal("expected false for missing key with past timestamp")
+		}
+	})
+
+	t.Run("negative timestamp rejected", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		_, err := handleExpireAtCmd(cmdArr("EXPIREAT", "k", "-1"), m)
+		if err == nil {
+			t.Fatal("expected error for negative timestamp")
+		}
+	})
+
+	t.Run("non-integer timestamp rejected", func(t *testing.T) {
+		m := newTestEngine(t)
+		m.Set("k", []byte("v"))
+		_, err := handleExpireAtCmd(cmdArr("EXPIREAT", "k", "abc"), m)
+		if err == nil {
+			t.Fatal("expected error for non-integer timestamp")
+		}
+	})
+
+	t.Run("too few arguments", func(t *testing.T) {
+		m := newTestEngine(t)
+		_, err := handleExpireAtCmd(cmdArr("EXPIREAT", "k"), m)
+		if err == nil {
+			t.Fatal("expected error for missing timestamp argument")
+		}
+	})
+
+	t.Run("too many arguments", func(t *testing.T) {
+		m := newTestEngine(t)
+		_, err := handleExpireAtCmd(cmdArr("EXPIREAT", "k", unixStr(time.Now().Add(10*time.Second)), "extra"), m)
+		if err == nil {
+			t.Fatal("expected error for extra argument")
+		}
+	})
+
+	t.Run("key is not a bulk string", func(t *testing.T) {
+		m := newTestEngine(t)
+		arr := []*resp.Value{
+			bulkVal("EXPIREAT"),
+			{Typ: resp.StringType, Str: "k"},
+			bulkVal(unixStr(time.Now().Add(10 * time.Second))),
+		}
+		_, err := handleExpireAtCmd(arr, m)
+		if err == nil {
+			t.Fatal("expected error for non-bulk-string key")
+		}
+	})
+
+	t.Run("timestamp is not a bulk string", func(t *testing.T) {
+		m := newTestEngine(t)
+		arr := []*resp.Value{
+			bulkVal("EXPIREAT"),
+			bulkVal("k"),
+			{Typ: resp.StringType, Str: unixStr(time.Now().Add(10 * time.Second))},
+		}
+		_, err := handleExpireAtCmd(arr, m)
+		if err == nil {
+			t.Fatal("expected error for non-bulk-string timestamp")
 		}
 	})
 }

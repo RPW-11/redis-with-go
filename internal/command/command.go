@@ -19,8 +19,9 @@ const (
 	Set    Command = "SET"
 	Get    Command = "GET"
 	Del    Command = "DEL"
-	Expire Command = "EXPIRE"
-	Ttl    Command = "TTL"
+	Expire   Command = "EXPIRE"
+	ExpireAt Command = "EXPIREAT"
+	Ttl      Command = "TTL"
 )
 
 const (
@@ -111,6 +112,20 @@ func Handle(ctx context.Context, conn net.Conn, lru *store.Store) error {
 		res, _ := resp.Serialize(resp.NewInteger(val))
 		conn.Write(res)
 		return nil
+	case ExpireAt:
+		ok, err := handleExpireAtCmd(v.Arr, lru)
+		if err != nil {
+			errBytes, _ := resp.Serialize(resp.NewError(err))
+			conn.Write(errBytes)
+			return nil
+		}
+		val := 0
+		if ok {
+			val = 1
+		}
+		res, _ := resp.Serialize(resp.NewInteger(val))
+		conn.Write(res)
+		return nil
 	case Ttl:
 		sec, err := handleTtlCmd(v.Arr, lru)
 		if err != nil {
@@ -176,6 +191,18 @@ func handleDelCmd(arr []*resp.Value, lru *store.Store) error {
 	return nil
 }
 
+func applyExpireAt(key string, expiry time.Time, lru *store.Store) (bool, error) {
+	if time.Now().After(expiry) {
+		_, ok := lru.Get(key)
+		if !ok {
+			return false, nil
+		}
+		lru.Delete(key)
+		return true, nil
+	}
+	return lru.SetExpiry(key, expiry), nil
+}
+
 func handleExpireCmd(arr []*resp.Value, lru *store.Store) (bool, error) {
 	if len(arr) != 3 {
 		return false, fmt.Errorf("invalid expire command")
@@ -188,7 +215,7 @@ func handleExpireCmd(arr []*resp.Value, lru *store.Store) (bool, error) {
 	}
 
 	key := string(arr[1].Bytes)
-	sec, err := strconv.Atoi(string(arr[2].Bytes))
+	sec, err := strconv.ParseInt(string(arr[2].Bytes), 10, 64)
 	if err != nil {
 		return false, err
 	}
@@ -196,14 +223,30 @@ func handleExpireCmd(arr []*resp.Value, lru *store.Store) (bool, error) {
 		return false, fmt.Errorf("invalid expire time in 'expire' command")
 	}
 
-	t := time.Now().Add(time.Duration(sec) * time.Second)
-	ok := lru.SetExpiry(key, t)
+	return applyExpireAt(key, time.Now().Add(time.Duration(sec)*time.Second), lru)
+}
 
-	if !ok {
-		return false, nil
+func handleExpireAtCmd(arr []*resp.Value, lru *store.Store) (bool, error) {
+	if len(arr) != 3 {
+		return false, fmt.Errorf("invalid expireat command")
+	}
+	if arr[1].Typ != resp.BulkStringType {
+		return false, fmt.Errorf("key must be a bulk string")
+	}
+	if arr[2].Typ != resp.BulkStringType {
+		return false, fmt.Errorf("timestamp must be a bulk string")
 	}
 
-	return true, nil
+	key := string(arr[1].Bytes)
+	ts, err := strconv.ParseInt(string(arr[2].Bytes), 10, 64)
+	if err != nil {
+		return false, fmt.Errorf("invalid unix timestamp in 'expireat' command")
+	}
+	if ts < 0 {
+		return false, fmt.Errorf("invalid expire time in 'expireat' command")
+	}
+
+	return applyExpireAt(key, time.Unix(ts, 0), lru)
 }
 
 func handleTtlCmd(arr []*resp.Value, lru *store.Store) (int, error) {
