@@ -45,6 +45,17 @@ func NewStore(cap int, aofDir string) (*Store, error) {
 	}, nil
 }
 
+func (s *Store) AttachAOF(dir string) error {
+	aof, err := NewAofLogger(dir)
+	if err != nil {
+		return fmt.Errorf("failed to create aof logger: %w", err)
+	}
+	s.mu.Lock()
+	s.aof = aof
+	s.mu.Unlock()
+	return nil
+}
+
 func (s *Store) Get(k string) ([]byte, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

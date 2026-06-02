@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"time"
 
@@ -34,12 +33,11 @@ type Request struct {
 	payload []byte
 }
 
-func Handle(ctx context.Context, r io.Reader, lru *store.Store) *resp.Value {
+func Handle(ctx context.Context, rd *bufio.Reader, lru *store.Store) *resp.Value {
 	if ctx.Err() != nil {
 		return resp.NewError(ctx.Err())
 	}
 
-	rd := bufio.NewReader(r)
 	v, err := resp.Parse(rd)
 	if err != nil {
 		return resp.NewError(err)

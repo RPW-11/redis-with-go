@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bufio"
 	"context"
 	"strconv"
 	"strings"
@@ -558,7 +559,7 @@ func TestHandle(t *testing.T) {
 		cancel()
 
 		m := newTestEngine(t)
-		v := Handle(ctx, strings.NewReader(""), m)
+		v := Handle(ctx, bufio.NewReader(strings.NewReader("")), m)
 		if v == nil || v.Typ != resp.ErrorType {
 			t.Fatalf("expected error value for cancelled ctx, got %v", v)
 		}
@@ -568,7 +569,7 @@ func TestHandle(t *testing.T) {
 		ctx := context.Background()
 		m := newTestEngine(t)
 
-		r := strings.NewReader("*3\r\n$3\r\nSET\r\n$5\r\nhello\r\n$5\r\nworld\r\n")
+		r := bufio.NewReader(strings.NewReader("*3\r\n$3\r\nSET\r\n$5\r\nhello\r\n$5\r\nworld\r\n"))
 		v := Handle(ctx, r, m)
 		if v == nil || v.Typ != resp.StringType || v.Str != "OK" {
 			t.Fatalf("expected +OK response, got %v", v)

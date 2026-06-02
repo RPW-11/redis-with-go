@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"log/slog"
@@ -15,7 +16,7 @@ import (
 
 type Server struct {
 	Port string
-	m    *store.Store
+	s    *store.Store
 }
 
 func (s *Server) Run() error {
@@ -71,8 +72,9 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 		}
 	}()
 
+	rd := bufio.NewReader(conn)
 	for {
-		v := command.Handle(ctx, conn, s.m)
+		v := command.Handle(ctx, rd, s.s)
 		b, _ := resp.Serialize(v)
 		if _, err := conn.Write(b); err != nil {
 			return
@@ -80,13 +82,23 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}
 }
 
-func NewServer(port, aofPath string, cap int) (*Server, error) {
-	m, err := store.NewStore(cap, aofPath)
+func NewServer(port, aofDir string, cap int) (*Server, error) {
+	s, err := store.NewStore(cap, "")
 	if err != nil {
 		return nil, err
 	}
+
+	if aofDir != "" {
+		if err := s.ReplayAOF(aofDir); err != nil {
+			slog.Warn("aof replay stopped early", "err", err)
+		}
+		if err := s.AttachAOF(aofDir); err != nil {
+			return nil, fmt.Errorf("failed to attach aof: %w", err)
+		}
+	}
+
 	return &Server{
 		Port: port,
-		m:    m,
+		s:    s,
 	}, nil
 }
