@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-const aofFilename = "appendonly.aof"
+const AofFilename = "data.aof"
 
 type AofLogger struct {
 	Dir string
@@ -14,7 +14,7 @@ type AofLogger struct {
 }
 
 func NewAofLogger(dir string) (*AofLogger, error) {
-	path := filepath.Join(dir, aofFilename)
+	path := filepath.Join(dir, AofFilename)
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (aof *AofLogger) LogDelete(key string, _ []byte) error {
 	return err
 }
 
-func (aof *AofLogger) LogExpire(key string, val []byte) error {
-	_, err := fmt.Fprintf(aof.f, "*3\r\n$6\r\nEXPIRE\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n", len(key), key, len(val), val)
+func (aof *AofLogger) LogExpireAt(key string, unixTs []byte) error {
+	_, err := fmt.Fprintf(aof.f, "*3\r\n$8\r\nEXPIREAT\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n", len(key), key, len(unixTs), unixTs)
 	return err
 }

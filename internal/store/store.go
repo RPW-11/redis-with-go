@@ -137,9 +137,9 @@ func (s *Store) SetExpiry(k string, t time.Time) bool {
 	}
 
 	if s.aof != nil {
-		sec := []byte(strconv.FormatInt(int64(time.Until(t).Seconds()), 10))
-		if err := s.aof.LogExpire(k, sec); err != nil {
-			slog.Error("aof log expire failed", "err", err)
+		ts := []byte(strconv.FormatInt(t.Unix(), 10))
+		if err := s.aof.LogExpireAt(k, ts); err != nil {
+			slog.Error("aof log expireat failed", "err", err)
 		}
 	}
 

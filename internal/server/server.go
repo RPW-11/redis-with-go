@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/RPW-11/redis-with-go/internal/command"
+	"github.com/RPW-11/redis-with-go/internal/resp"
 	"github.com/RPW-11/redis-with-go/internal/store"
 )
 
@@ -71,7 +72,9 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}()
 
 	for {
-		if err := command.Handle(ctx, conn, s.m); err != nil {
+		v := command.Handle(ctx, conn, s.m)
+		b, _ := resp.Serialize(v)
+		if _, err := conn.Write(b); err != nil {
 			return
 		}
 	}

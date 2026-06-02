@@ -2,8 +2,8 @@ package command
 
 import (
 	"context"
-	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -553,49 +553,28 @@ func TestHandleTtlCmd(t *testing.T) {
 }
 
 func TestHandle(t *testing.T) {
-	t.Run("cancelled context returns without writing", func(t *testing.T) {
+	t.Run("cancelled context returns error value", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		client, server := net.Pipe()
-		defer client.Close()
-		defer server.Close()
-
 		m := newTestEngine(t)
-		Handle(ctx, server, m)
-
-		client.SetReadDeadline(time.Now().Add(50 * time.Millisecond))
-		buf := make([]byte, 64)
-		n, _ := client.Read(buf)
-		if n != 0 {
-			t.Fatalf("expected no bytes written for cancelled ctx, got %d bytes", n)
+		v := Handle(ctx, strings.NewReader(""), m)
+		if v == nil || v.Typ != resp.ErrorType {
+			t.Fatalf("expected error value for cancelled ctx, got %v", v)
 		}
 	})
 
-	t.Run("active context processes command", func(t *testing.T) {
+	t.Run("active context processes SET and returns OK", func(t *testing.T) {
 		ctx := context.Background()
-
-		client, server := net.Pipe()
-		defer client.Close()
-		defer server.Close()
-
 		m := newTestEngine(t)
-		go func() {
-			client.Write([]byte("*3\r\n$3\r\nSET\r\n$5\r\nhello\r\n$5\r\nworld\r\n"))
-		}()
-		go Handle(ctx, server, m)
 
-		client.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-		buf := make([]byte, 64)
-		n, err := client.Read(buf)
-		if err != nil {
-			t.Fatalf("unexpected error reading response: %v", err)
+		r := strings.NewReader("*3\r\n$3\r\nSET\r\n$5\r\nhello\r\n$5\r\nworld\r\n")
+		v := Handle(ctx, r, m)
+		if v == nil || v.Typ != resp.StringType || v.Str != "OK" {
+			t.Fatalf("expected +OK response, got %v", v)
 		}
-		if string(buf[:n]) != "+OK\r\n" {
-			t.Fatalf("expected +OK\\r\\n, got %q", buf[:n])
-		}
-		v, ok := m.Get("hello")
-		if !ok || string(v) != "world" {
+		val, ok := m.Get("hello")
+		if !ok || string(val) != "world" {
 			t.Fatalf("expected key 'hello'='world' in store after SET")
 		}
 	})
