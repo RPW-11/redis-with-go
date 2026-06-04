@@ -1,3 +1,4 @@
+// Package resp implements a RESP3 parser and value types.
 package resp
 
 import (
@@ -8,8 +9,10 @@ import (
 	"strconv"
 )
 
+// DataType is the single-byte prefix that identifies a RESP3 type.
 type DataType byte
 
+// Value holds the parsed result of a single RESP3 element.
 type Value struct {
 	Typ    DataType
 	Str    string
@@ -32,6 +35,7 @@ const (
 	MaxArrayLength      = 4_000_000
 )
 
+// RESP3 type prefixes as defined in the protocol spec.
 const (
 	StringType     DataType = '+'
 	ErrorType      DataType = '-'
@@ -56,6 +60,8 @@ func readCRLF(rd *bufio.Reader) ([]byte, error) {
 	return b[:len(b)-2], nil
 }
 
+// Parse reads one RESP3 value from rd. The first byte determines the type
+// (e.g. '*' for array, '$' for bulk string) and the rest is parsed accordingly.
 func Parse(rd *bufio.Reader) (Value, error) {
 	typ, err := rd.ReadByte()
 	if err != nil {

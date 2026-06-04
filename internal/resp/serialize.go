@@ -62,6 +62,7 @@ func NewDouble(f float64) *Value {
 	}
 }
 
+// Serialize encodes v into its RESP3 byte representation.
 func Serialize(v *Value) ([]byte, error) {
 	switch v.Typ {
 	case StringType:

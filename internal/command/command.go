@@ -12,6 +12,7 @@ import (
 	"github.com/RPW-11/redis-with-go/internal/store"
 )
 
+// Command is the string name of a Redis command as sent by the client.
 type Command string
 
 const (
@@ -23,16 +24,8 @@ const (
 	Ttl      Command = "TTL"
 )
 
-const (
-	MaxBulkStringLength = 5_000_000
-	MaxCmdLen           = 4
-)
 
-type Request struct {
-	cmd     Command
-	payload []byte
-}
-
+// Handle reads one RESP3 command from rd, dispatches it to the appropriate handler, and returns the response value.
 func Handle(ctx context.Context, rd *bufio.Reader, lru *store.Store) *resp.Value {
 	if ctx.Err() != nil {
 		return resp.NewError(ctx.Err())
@@ -157,6 +150,7 @@ func handleDelCmd(arr []*resp.Value, lru *store.Store) error {
 	return nil
 }
 
+// applyExpireAt sets the expiry on a key. If the timestamp is already in the past, the key will be deleted immediately.
 func applyExpireAt(key string, expiry time.Time, lru *store.Store) (bool, error) {
 	if time.Now().After(expiry) {
 		_, ok := lru.Get(key)

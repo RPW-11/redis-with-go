@@ -1,3 +1,4 @@
+// Package store implements the key-value store with LRU eviction and AOF persistence.
 package store
 
 import (
@@ -10,18 +11,22 @@ import (
 
 const MaxCapacity = 10_000_000
 
+// Data is the value type held by each LRU node.
 type Data struct {
 	Key    string
 	Bytes  []byte
-	Expiry time.Time
+	Expiry time.Time // zero means no expiry
 }
 
+// Store is the public interface to the cache. It owns the mutex, LRU engine,
+// and AOF logger — all writes go through here.
 type Store struct {
 	mu  sync.Mutex
-	lru *LRUEngine
-	aof *AofLogger
+	lru *lruEngine
+	aof *aofLogger // nil when AOF is disabled or during replay
 }
 
+// NewStore creates a Store with the given capacity. Pass aofDir="" to disable AOF.
 func NewStore(cap int, aofDir string) (*Store, error) {
 	if cap <= 0 {
 		return nil, fmt.Errorf("capacity must be greater than 0")
@@ -30,23 +35,25 @@ func NewStore(cap int, aofDir string) (*Store, error) {
 		return nil, fmt.Errorf("capacity %d exceeds maximum allowed %d", cap, MaxCapacity)
 	}
 
-	var aof *AofLogger
+	var aof *aofLogger
 	if aofDir != "" {
 		var err error
-		aof, err = NewAofLogger(aofDir)
+		aof, err = newAofLogger(aofDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create aof logger: %w", err)
 		}
 	}
 
 	return &Store{
-		lru: NewLRUEngine(cap),
+		lru: newLRUEngine(cap),
 		aof: aof,
 	}, nil
 }
 
+// AttachAOF wires up the AOF logger after replay is complete.
+// Until this is called, s.aof is nil and writes are not logged.
 func (s *Store) AttachAOF(dir string) error {
-	aof, err := NewAofLogger(dir)
+	aof, err := newAofLogger(dir)
 	if err != nil {
 		return fmt.Errorf("failed to create aof logger: %w", err)
 	}
@@ -56,6 +63,8 @@ func (s *Store) AttachAOF(dir string) error {
 	return nil
 }
 
+// Get returns a copy of the value for the given key. The key is promoted to
+// most-recently-used first, and any expired key is removed on access.
 func (s *Store) Get(k string) ([]byte, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
